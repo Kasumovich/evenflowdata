@@ -1,0 +1,9 @@
+requests
+pandas
+numpy
+statsmodels
+beautifulsoup4
+lxml
+pysentiment2
+pdfplumber
+pyarrow
