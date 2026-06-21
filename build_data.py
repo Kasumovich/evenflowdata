@@ -27,10 +27,12 @@ def _g(f, c, w):
 
 
 def synthetic():
-    """Same shapes the dashboard ships with, so the demo looks coherent."""
-    N = 440
+    """Same shapes the dashboard ships with, so the demo looks coherent.
+    The series runs up to today, so the latest point is genuinely current."""
     start = dt.date(1970, 1, 15)
-    dates = [start + dt.timedelta(days=int(i * round(365.25 / 8))) for i in range(N)]
+    step = round(365.25 / 8)
+    N = (dt.date.today() - start).days // step + 1
+    dates = [start + dt.timedelta(days=i * step) for i in range(N)]
     fr = lambda d: d.year + (d.month - 1) / 12
     L = {"growth": [], "inflation": [], "bottlenecks": [], "risks": []}
     laborTone, withhold = [], []
@@ -122,8 +124,12 @@ def main():
         dates, L, laborTone, withhold = build_real(args.start, args.end)
 
     hmVals, topics, feed = snapshot()
+    last = dates[-1]
+    next_release = last + dt.timedelta(days=round(365.25 / 8))  # ~next scheduled book
     payload = {
-        "as_of": dates[-1].isoformat(),
+        "as_of": last.isoformat(),
+        "as_of_label": last.strftime("%B %Y"),
+        "next_release": next_release.isoformat(),
         "rule_version": RULE_VERSION,
         "dates": [d.isoformat() for d in dates],
         "lens": L, "laborTone": laborTone, "withhold": withhold,
