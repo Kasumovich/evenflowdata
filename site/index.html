@@ -136,6 +136,7 @@
   </div>
 
   <div class="grid4" id="tiles"></div>
+  <p class="read" style="margin:6px 2px 0">each lens on a theoretical range of ±2 · −2 collapse … 0 flat … +2 robust</p>
 
   <div class="card">
     <div class="phead">
@@ -147,9 +148,9 @@
     </div>
     <div class="lgnd" id="lgnd"></div>
     <div class="chart-wrap"><canvas id="lensChart" role="img"
-      aria-label="Zoomable time series of four Beige Book lens composites — growth, inflation, bottlenecks and risks — from 1970 to 2026, with NBER recession periods shaded.">
+      aria-label="Zoomable time series of four Beige Book lens composites — growth, inflation, labor and risks — from 1970 to 2026, with NBER recession periods shaded.">
       Growth and risk composites move opposite each other and dip during recessions; inflation peaks in the 1970s-80s and again in the early 2020s.</canvas></div>
-    <p class="read" id="read1">showing 1970 – 2026 · 440 books</p>
+    <p class="read" id="read1">showing 1970 – 2026 · 440 books · theoretical range ±2</p>
   </div>
 
   <div class="row2">
@@ -312,12 +313,13 @@
     if(DATA.laborTone){laborTone=DATA.laborTone;}
     if(DATA.withhold){withhold=DATA.withhold;}
   }
+  lens.labor=laborTone; // labor is now a first-class lens (replaces bottlenecks in the views)
 
   // latest-book snapshot panels (synthetic)
   var tiles=[
     {lens:"Growth",val:fmtv(lens.growth[N-1]),prev:lens.growth[N-2],cur:lens.growth[N-1],meta:"breadth 8/12 · σ 0.19"},
     {lens:"Inflation",val:fmtv(lens.inflation[N-1]),prev:lens.inflation[N-2],cur:lens.inflation[N-1],meta:"breadth 10/12 · σ 0.12"},
-    {lens:"Bottlenecks",val:fmtv(lens.bottlenecks[N-1]),prev:lens.bottlenecks[N-2],cur:lens.bottlenecks[N-1],meta:"breadth 4/12 · σ 0.16"},
+    {lens:"Labor",val:fmtv(laborTone[N-1]),prev:laborTone[N-2],cur:laborTone[N-1],meta:"tone · derived"},
     {lens:"Risks",val:fmtv(lens.risks[N-1]),prev:lens.risks[N-2],cur:lens.risks[N-1],meta:"σ-spread 0.28 · widening"}
   ];
   var hmDistricts=["Boston","New York","Philadelphia","Cleveland","Richmond","Atlanta","Chicago","St. Louis","Minneapolis","Kansas City","Dallas","San Francisco"];
@@ -406,7 +408,7 @@
 
   // heatmap
   function cellColor(v){return v<=-.4?"#C2491F":v<=-.1?"#E89A7C":v<.1?"#E7E5DF":v<.4?"#7FCBB0":"#0F6E56";}
-  var lh=["Growth","Inflation","Bottleneck","Risk"];
+  var lh=["Growth","Inflation","Labor","Risk"];
   document.getElementById("heatmap").innerHTML=
     '<div class="hm-row"><span></span>'+lh.map(function(l){return '<span class="hm-h">'+l+'</span>';}).join("")+'</div>'+
     hmDistricts.map(function(d,i){return '<div class="hm-row"><span>'+d+'</span>'+
@@ -441,13 +443,13 @@
     limits:{x:{min:0,max:N-1,minRange:8}}
   };}
   function upd(c,el){var mn=c.scales.x.min,mx=c.scales.x.max;
-    el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx);}
+    el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx)+(el.id==="read1"?" · theoretical range \u00B12":"");}
 
   // --- four-lens history chart ---
   var series=[
     {key:"growth",label:"Growth",color:"#0F6E56"},
     {key:"inflation",label:"Inflation",color:"#9A6206"},
-    {key:"bottlenecks",label:"Bottlenecks",color:"#C2491F"},
+    {key:"labor",label:"Labor",color:"#C2491F"},
     {key:"risks",label:"Risks",color:"#4F46B8"}
   ];
   var lensChart=new Chart(document.getElementById("lensChart"),{
@@ -482,7 +484,7 @@
     plugins:[recBands()]
   });
 
-  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi;}
+  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · theoretical range \u00B12":"");}
   document.getElementById("reset1").addEventListener("click",function(){resetChart(lensChart,document.getElementById("read1"),"1970","2026");});
   document.getElementById("reset2").addEventListener("click",function(){resetChart(laborChart,document.getElementById("read2"),"1970","2026");});
 
@@ -532,4 +534,3 @@
 </script>
 </body>
 </html>
-
