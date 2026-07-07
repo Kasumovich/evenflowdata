@@ -132,7 +132,7 @@
         <div class="tl-bar"><i id="pInfBar" style="background:var(--amber)"></i></div>
       </div>
     </div>
-    <p class="tl-note" id="tlNote">regime classifies the latest book · probabilities fit by logistic regression on the loaded panel vs NBER recession dates and CPI&gt;2% (synthetic labels here; swap in real NBER/CPI for live use)</p>
+    <p class="tl-note" id="tlNote">regime classifies the latest book · 12m logits: recession ~ growth, momentum, risk, labor (vs NBER dates); inflation&gt;2% ~ actual CPI YoY anchor (4.2% latest, BLS), inflation tone, momentum, labor, bottlenecks · inflation is anchored to the real starting level, tone supplies the increment · CPI history synthetic in this preview — swap in real BLS CPI + NBER for live use</p>
   </div>
 
   <div class="grid4" id="tiles"></div>
@@ -227,10 +227,13 @@
     <h3>The probability models</h3>
     <p>Two forecasts sit on top of the descriptive scores, each a logistic regression.
     <strong>Recession in the next 12 months</strong> is fit on the growth score, its change
-    since the last book, and the risk score — trained against the official NBER recession
-    dates. <strong>Inflation above 2% in 12 months</strong> is fit on the inflation score, its
-    change, and the bottlenecks score — trained against whether CPI inflation later exceeded
-    2%.</p>
+    since the last book, the risk score, and the labor score — trained against the official
+    NBER recession dates. <strong>Inflation above 2% in 12 months</strong> is anchored to the
+    <strong>actual headline CPI rate</strong> (its 12-month change from the BLS, 4.2% at the
+    latest reading) and then adjusted by the inflation tone, its change, the labor score, and
+    the bottlenecks score — trained against whether CPI later exceeded 2%. Anchoring on the
+    real starting level matters: 4% today implies very different odds than 2%, and the tone
+    scores supply the increment on top of where the rate already sits.</p>
     <p>These are genuine forecasts, a different kind of thing from the descriptive scores, and
     they carry real uncertainty. To avoid hindsight, any historical view of a probability is
     computed "as it would have read at the time" — each past point uses only the data and
@@ -354,11 +357,19 @@
     function cpiYoY(i){var f=fracY(i);return 1.5+6*gauss(f,1979,4)+5*gauss(f,2022,1.3)-1.3*gauss(f,2009,1.0)+0.6*Math.sin((f-1970)/3.0);}
     function recWithin12m(i){var f=fracY(i);return NBER.some(function(r){return !((f+1.0)<r[0]||f>r[1]);})?1:0;}
 
+    // real headline CPI YoY anchor (Option B): history uses the synthetic curve;
+    // the live prediction point is anchored to the actual latest BLS print.
+    // The pipeline can pass DATA.cpiYoY (real BLS/FRED series) to make history real too.
+    var CPI_NOW=4.2; // BLS CPI-U, 12 months ending May 2026 (www.bls.gov/cpi)
+    var cpiSeries=(DATA&&DATA.cpiYoY)?DATA.cpiYoY:dates.map(function(d,i){return cpiYoY(i);});
+
     // feature rows + labels (train where momentum exists AND 12m future is observed)
+    //   recession : growth level, growth momentum, risks, labor
+    //   inflation : actual CPI YoY (anchor), inflation tone, inflation momentum, labor, bottlenecks
     var Xr=[],yr=[],Xi=[],yi=[];
     for(var i=1;i<=N-1-H;i++){
-      Xr.push([lens.growth[i], lens.growth[i]-lens.growth[i-1], lens.risks[i]]); yr.push(recWithin12m(i));
-      Xi.push([lens.inflation[i], lens.inflation[i]-lens.inflation[i-1], lens.bottlenecks[i]]); yi.push(cpiYoY(i+H)>2?1:0);
+      Xr.push([lens.growth[i], lens.growth[i]-lens.growth[i-1], lens.risks[i], laborTone[i]]); yr.push(recWithin12m(i));
+      Xi.push([cpiSeries[i], lens.inflation[i], lens.inflation[i]-lens.inflation[i-1], laborTone[i], lens.bottlenecks[i]]); yi.push(((i+H<N?cpiSeries[i+H]:cpiSeries[N-1])>2)?1:0);
     }
     function stdz(M){var k=M[0].length,mean=[],sd=[];for(var j=0;j<k;j++){var c=M.map(function(r){return r[j];});var m=c.reduce(function(a,b){return a+b;},0)/c.length;var v=c.reduce(function(a,b){return a+(b-m)*(b-m);},0)/c.length;mean.push(m);sd.push(Math.sqrt(v)||1);}return {Z:M.map(function(r){return r.map(function(x,j){return (x-mean[j])/sd[j];});}),mean:mean,sd:sd};}
     function fit(X,y){var n=X.length,k=X[0].length,w=new Array(k).fill(0),b=0,lr=0.3,l2=0.02;
@@ -370,8 +381,9 @@
     var sr=stdz(Xr), si=stdz(Xi);
     var mr=fit(sr.Z,yr), mi=fit(si.Z,yi);
     var li=N-1;
-    var xr=[lens.growth[li], lens.growth[li]-lens.growth[li-1], lens.risks[li]];
-    var xi=[lens.inflation[li], lens.inflation[li]-lens.inflation[li-1], lens.bottlenecks[li]];
+    var cpiLatest=(DATA&&DATA.cpiYoY)?cpiSeries[li]:CPI_NOW; // real anchor at the live point
+    var xr=[lens.growth[li], lens.growth[li]-lens.growth[li-1], lens.risks[li], laborTone[li]];
+    var xi=[cpiLatest, lens.inflation[li], lens.inflation[li]-lens.inflation[li-1], laborTone[li], lens.bottlenecks[li]];
     var pRec=Math.round(predict(mr,xr,sr)*100), pInf=Math.round(predict(mi,xi,si)*100);
     // pipeline (statsmodels) probabilities win when present; in-browser fit is the fallback
     if(DATA&&DATA.topline){
