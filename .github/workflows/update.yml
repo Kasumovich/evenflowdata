@@ -1,9 +1,19 @@
 name: Update dashboard data
 
+# Manual, mode-selectable. Removed the daily cron so a demo run can't overwrite real
+# data, and because the Beige Book only publishes 8x/year. Run real-books when a new
+# book drops; the corpus cache makes re-runs fast.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 19 * * *"
+    inputs:
+      mode:
+        description: "Data mode"
+        type: choice
+        options:
+          - demo
+          - debug-books
+          - real-books
+        default: real-books
 
 permissions:
   contents: write
@@ -17,13 +27,23 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+
+      # Persist the fetched Beige Book pages between runs (never-revised = safe to cache).
+      - name: Cache Beige Book corpus
+        uses: actions/cache@v4
+        with:
+          path: ~/.bb_cache
+          key: bb-cache-v1
+
       - name: Build data
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python build_data.py --demo --out site/data.js
+        run: python build_data.py --${{ github.event.inputs.mode }} --out site/data.js
+
       - name: Commit if changed
         run: |
           git config user.name "beigebook-bot"
           git config user.email "bot@users.noreply.github.com"
           git add site/data.js
-          git diff --cached --quiet && echo "no change" || (git commit -m "data: refresh" && git push)
+          git diff --cached --quiet && echo "no change" || \
+            (git commit -m "data: ${{ github.event.inputs.mode }} refresh" && git push)
