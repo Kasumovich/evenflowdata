@@ -23,14 +23,19 @@ SECTIONS = [
     "Transportation",
 ]
 
-# Production lenses. The 3-year prototype scores LABOR only; the others are stubs
-# that light up once the parser scales to the full corpus.
+# Production lenses, routed to the sections that are CONSISTENT across all 12 district
+# pages (section names drift district-to-district, so the core lenses use only the
+# canonical headers that always appear). Risks is computed separately as uncertainty
+# density across the whole district text, not as a ladder section.
 LENS_SECTIONS = {
-    "growth":     ["Overall Economic Activity", "Manufacturing", "Consumer Spending", "Nonfinancial Services"],
-    "inflation":  ["Prices"],
-    "bottlenecks":["Labor Markets", "Manufacturing"],  # supply + labor-shortage language
-    "risks":      ["Overall Economic Activity"],        # uncertainty density is computed across all text
+    "growth":      ["Summary of Economic Activity", "Overall Economic Activity"],
+    "inflation":   ["Prices"],
+    "labor":       ["Labor Markets"],
+    # bottlenecks is secondary: keyword-matched supply/manufacturing sections (see scoring).
+    "bottlenecks": ["Manufacturing"],
 }
+# risks: uncertainty density (Loughran-McDonald) across all of a district's text.
+RISK_MODE = "uncertainty"
 
 # Pilot signal for the prototype.
 PILOT_SECTION = "Labor Markets"
