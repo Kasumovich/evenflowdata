@@ -99,11 +99,18 @@ def fetch_cpi_yoy(dates):
 
 
 def _fit_logit(X, y, iters=4000, lr=0.3, l2=0.02):
-    """Standardized logistic regression by gradient descent (matches the dashboard fit)."""
-    X = np.asarray(X, float); y = np.asarray(y, float)
-    mean = X.mean(0); sd = X.std(0); sd[sd == 0] = 1
+    """Standardized logistic regression by gradient descent (matches the dashboard fit).
+    Robust to tiny/degenerate samples (e.g. debug runs): returns a flat base-rate model
+    when there aren't enough rows to fit."""
+    X = np.atleast_2d(np.asarray(X, float)); y = np.asarray(y, float).ravel()
+    n, k = X.shape
+    if n < 8 or len(np.unique(y)) < 2:          # too few rows or single class -> base rate
+        base = float(y.mean()) if n else 0.5
+        return np.zeros(k), math.log(base / (1 - base)) if 0 < base < 1 else 0.0, \
+               X.mean(0) if n else np.zeros(k), np.ones(k)
+    mean = X.mean(0); sd = X.std(0); sd = np.where(sd == 0, 1.0, sd)
     Z = (X - mean) / sd
-    n, k = Z.shape; w = np.zeros(k); b = 0.0
+    w = np.zeros(k); b = 0.0
     for _ in range(iters):
         p = 1 / (1 + np.exp(-(Z @ w + b)))
         e = p - y
@@ -143,19 +150,22 @@ def probabilities(dates, L, laborTone, cpi_yoy=None):
                    laborTone[i], L["bottlenecks"][i]])
         yi.append(1 if fut > 2 else 0)
 
-    mr = _fit_logit(Xr, yr)
-    mi = _fit_logit(Xi, yi)
     li = N - 1
     cpi_now = cpi[li]
+    g, gprev = L["growth"][-1], L["growth"][-2] if N > 1 else L["growth"][-1]
+    mom = g - gprev
+    regime = ("Rising expansion" if mom >= 0 else "Slowing expansion") if g >= 0 \
+             else ("Recovery" if mom >= 0 else "Recession")
+    if len(Xr) < 8 or len(Xi) < 8:      # debug/short runs: not enough history to fit
+        return {"regime": regime, "pRec": None, "pInf": None,
+                "cpi_now": round(cpi_now, 2), "note": "insufficient history to fit probabilities"}
+
+    mr = _fit_logit(Xr, yr)
+    mi = _fit_logit(Xi, yi)
     pRec = _predict(mr, [L["growth"][li], L["growth"][li] - L["growth"][li-1],
                          L["risks"][li], laborTone[li]])
     pInf = _predict(mi, [cpi_now, L["inflation"][li], L["inflation"][li] - L["inflation"][li-1],
                          laborTone[li], L["bottlenecks"][li]])
-
-    g, gprev = L["growth"][-1], L["growth"][-2]
-    mom = g - gprev
-    regime = ("Rising expansion" if mom >= 0 else "Slowing expansion") if g >= 0 \
-             else ("Recovery" if mom >= 0 else "Recession")
     return {"regime": regime, "pRec": round(pRec * 100, 1), "pInf": round(pInf * 100, 1),
             "cpi_now": round(cpi_now, 2)}
 
@@ -272,13 +282,3 @@ def main():
     }
     if cpi_yoy:
         payload["cpiYoY"] = cpi_yoy         # real anchor for the dashboard's in-browser model
-    src = "real-books" if (args.real_books or args.debug_books) else ("synthetic" if args.demo else "pipeline")
-    payload["lens_source"] = src
-    with open(args.out, "w") as fh:
-        fh.write("window.DASHBOARD_DATA = " + json.dumps(payload) + ";\n")
-    print(f"wrote {args.out}: {len(dates)} books ({src}), as_of {payload['as_of']}, "
-          f"cpi {'real' if cpi_yoy else 'synthetic'}, topline {payload['topline']}")
-
-
-if __name__ == "__main__":
-    main()
