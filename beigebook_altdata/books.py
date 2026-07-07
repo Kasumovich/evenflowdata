@@ -1,0 +1,303 @@
+"""Real Beige Book ingestion + scoring (2011-present).
+
+Runs in an environment WITH network access to federalreserve.gov (the build sandbox
+blocks it, so the first run happens in the user's GitHub Action). Built against the
+CONFIRMED modern structure:
+
+  landing : /monetarypolicy/beigebook{YYYYMM}.htm      -> links to 12 per-district pages
+  district: /monetarypolicy/beigebook{YYYYMM}-{slug}.htm
+            each has #### section headers: "Summary of Economic Activity",
+            "Labor Markets", "Prices", then district-specific sections.
+  archive : /monetarypolicy/beige-book-archive.htm     -> per-year release links
+
+Pipeline: release_index() -> per release, fetch 12 district pages -> parse sections ->
+score each with the frozen adjective ladder -> aggregate to per-book lens scores
+(growth/inflation/labor/bottlenecks) + risks (uncertainty density) + breadth/dispersion.
+
+Every fetched page is cached to disk and never overwritten: the Beige Book is never
+revised, so the cache IS the point-in-time vintage record.
+"""
+from __future__ import annotations
+import os, re, time, datetime as dt
+from dataclasses import dataclass, field
+
+try:
+    import requests
+except ImportError:
+    requests = None
+
+from bs4 import BeautifulSoup
+
+from .config import DISTRICTS, LENS_SECTIONS
+from . import lexicon
+
+FED = "https://www.federalreserve.gov/monetarypolicy"
+CACHE = os.environ.get("BB_CACHE", os.path.expanduser("~/.bb_cache"))
+HEADERS = {"User-Agent": "beigebook-altdata/1.0 (research; contact via evenflowdata.com)"}
+PAUSE = float(os.environ.get("BB_PAUSE", "0.7"))   # politeness delay between fetches
+
+_norm = lambda s: re.sub(r"[^a-z ]", "", s.lower()).strip()
+_DISTRICT_KEYS = {_norm(d): d for d in DISTRICTS}
+
+# Canonical section headers we rely on (consistent across districts).
+_CANON = {
+    "summary of economic activity": "Summary of Economic Activity",
+    "overall economic activity": "Summary of Economic Activity",
+    "labor markets": "Labor Markets",
+    "labor market": "Labor Markets",
+    "employment and wages": "Labor Markets",
+    "prices": "Prices",
+    "wages and prices": "Prices",
+}
+# keyword -> lens fallback for district-specific section names (bottlenecks etc.)
+_MANU_KEYS = ("manufactur", "supply", "freight", "transportation", "shipping")
+
+
+# ---------------------------------------------------------------------------- fetch
+def _get(url: str) -> str | None:
+    if requests is None:
+        raise RuntimeError("requests not installed")
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=30)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        time.sleep(PAUSE)
+        return r.text
+    except Exception as e:
+        print(f"  fetch error {url}: {e}")
+        return None
+
+
+def _cached(name: str, url: str) -> str | None:
+    os.makedirs(CACHE, exist_ok=True)
+    cp = os.path.join(CACHE, name)
+    if os.path.exists(cp):
+        return open(cp, encoding="utf-8").read()
+    html = _get(url)
+    if html is not None:
+        open(cp, "w", encoding="utf-8").write(html)
+    return html
+
+
+# ------------------------------------------------------------------- release index
+@dataclass
+class Release:
+    date: dt.date
+    ym: str                       # YYYYMM slug
+    landing_url: str
+    district_urls: dict = field(default_factory=dict)   # {district: url}
+
+
+def release_index(start_year: int = 2011, end_year: int | None = None) -> list[Release]:
+    """Crawl the Board archive for release landing pages >= start_year.
+
+    Discovers real links (no filename guessing): any href matching beigebook{YYYYMM}.htm.
+    Release DATE is refined later from each landing page's own text; here we key by YYYYMM.
+    """
+    end_year = end_year or dt.date.today().year
+    found: dict[str, str] = {}
+    # The archive index links out to per-year pages; crawl the index + each year page.
+    seeds = [f"{FED}/beige-book-archive.htm",
+             f"{FED}/publications/beige-book-default.htm"]
+    to_visit = list(seeds)
+    seen = set()
+    while to_visit:
+        url = to_visit.pop()
+        if url in seen:
+            continue
+        seen.add(url)
+        html = _get(url)
+        if not html:
+            continue
+        soup = BeautifulSoup(html, "lxml")
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            full = href if href.startswith("http") else "https://www.federalreserve.gov" + \
+                   (href if href.startswith("/") else "/monetarypolicy/" + href)
+            m = re.search(r"beigebook(\d{6})\.htm$", full)
+            if m:
+                ym = m.group(1)
+                if start_year <= int(ym[:4]) <= end_year:
+                    found[ym] = f"{FED}/beigebook{ym}.htm"
+            # follow year-archive pages one hop deep
+            elif re.search(r"beige-?book.*archive", full) and full not in seen:
+                to_visit.append(full)
+    releases = [Release(date=_ym_to_date(ym), ym=ym, landing_url=u)
+                for ym, u in sorted(found.items())]
+    print(f"release_index: {len(releases)} releases {start_year}-{end_year}")
+    return releases
+
+
+def _ym_to_date(ym: str) -> dt.date:
+    return dt.date(int(ym[:4]), int(ym[4:6]), 1)   # refined from landing text in get_book
+
+
+# -------------------------------------------------------------------- district fetch
+def _district_links(landing_html: str, ym: str) -> dict[str, str]:
+    """From a landing page, harvest the per-district page URLs."""
+    soup = BeautifulSoup(landing_html, "lxml")
+    out: dict[str, str] = {}
+    for a in soup.find_all("a", href=True):
+        m = re.search(rf"beigebook{ym}-([a-z\-]+)\.htm", a["href"])
+        if not m:
+            continue
+        label = _match_district(a.get_text(" ", strip=True)) or _slug_to_district(m.group(1))
+        if label:
+            href = a["href"]
+            full = href if href.startswith("http") else \
+                   "https://www.federalreserve.gov" + (href if href.startswith("/")
+                                                       else "/monetarypolicy/" + href)
+            out[label] = full
+    return out
+
+
+def _slug_to_district(slug: str) -> str | None:
+    n = slug.replace("-", " ")
+    for key, name in _DISTRICT_KEYS.items():
+        if key == n or key in n:
+            return name
+    return None
+
+
+def _match_district(text: str) -> str | None:
+    n = _norm(text)
+    for key, name in _DISTRICT_KEYS.items():
+        if key in n:
+            return name
+    return None
+
+
+def _refine_date(landing_html: str, ym: str) -> dt.date:
+    """Pull the real release date from the landing page (e.g. 'June 04, 2025')."""
+    txt = BeautifulSoup(landing_html, "lxml").get_text(" ", strip=True)
+    m = re.search(r"(January|February|March|April|May|June|July|August|September|"
+                  r"October|November|December)\s+(\d{1,2}),\s+(\d{4})", txt)
+    if m:
+        try:
+            return dt.datetime.strptime(m.group(0), "%B %d, %Y").date()
+        except ValueError:
+            pass
+    return _ym_to_date(ym)
+
+
+# ------------------------------------------------------------------- district parse
+def parse_district_page(html: str) -> dict[str, str]:
+    """Return {section_name: text} for one district page, using #### headers.
+
+    Bounds content between the district body and the 'Back to Top'/'For more
+    information' footer; treats short heading-like lines as section breaks.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup(["script", "style", "nav", "header", "footer"]):
+        tag.decompose()
+    # collect headings (h3-h5, strong) and paragraphs in document order
+    sections: dict[str, list[str]] = {}
+    cur = "Summary of Economic Activity"
+    for el in soup.find_all(["h2", "h3", "h4", "h5", "h6", "strong", "b", "p"]):
+        txt = el.get_text(" ", strip=True)
+        if not txt:
+            continue
+        low = txt.lower()
+        if low.startswith(("for more information", "back to top", "note:")):
+            break
+        if el.name in ("h2", "h3", "h4", "h5", "h6", "strong", "b") and len(txt) < 70:
+            canon = _CANON.get(_norm(txt))
+            sections.setdefault(canon or txt.strip(), [])
+            cur = canon or txt.strip()
+            continue
+        if el.name == "p":
+            sections.setdefault(cur, []).append(txt)
+    return {k: re.sub(r"\s+", " ", " ".join(v)).strip() for k, v in sections.items() if v}
+
+
+# ------------------------------------------------------------------------ scoring
+def _lens_from_sections(sections: dict[str, str]) -> dict[str, float | None]:
+    """Score one district's sections into the four ladder lenses (+ raw text for risk)."""
+    out: dict[str, float | None] = {}
+    for lens, names in LENS_SECTIONS.items():
+        texts = []
+        for name, text in sections.items():
+            if name in names:
+                texts.append(text)
+            elif lens == "bottlenecks" and any(k in name.lower() for k in _MANU_KEYS):
+                texts.append(text)
+        joined = " ".join(texts)
+        out[lens] = lexicon.diffusion(joined) if joined else None
+    return out
+
+
+def _risk_uncertainty(sections: dict[str, str]) -> float | None:
+    """Risk lens = uncertainty density across all of a district's text (LM)."""
+    alltext = " ".join(sections.values())
+    if not alltext:
+        return None
+    t = lexicon.tone(alltext)
+    u = t.get("uncertainty")
+    if u is None:
+        return None
+    # map an uncertainty share (~0-0.05 typical) onto the -2..+2 axis as a risk level:
+    # more hedging => higher risk. Scaled so ~5% uncertainty ~ +1.5 risk.
+    return round(min(u * 30.0, 2.0), 4)
+
+
+def score_release(rel: Release) -> dict | None:
+    """Fetch + parse + score one release -> per-book lens composites + breadth/dispersion."""
+    landing = _cached(f"bb_{rel.ym}.htm", rel.landing_url)
+    if not landing:
+        print(f"  {rel.ym}: no landing page")
+        return None
+    rel.date = _refine_date(landing, rel.ym)
+    links = _district_links(landing, rel.ym)
+    if len(links) < 6:
+        print(f"  {rel.ym}: only {len(links)} district links found")
+        return None
+
+    per_district: dict[str, dict[str, float | None]] = {}
+    for d, url in links.items():
+        html = _cached(f"bb_{rel.ym}_{_norm(d).replace(' ', '-')}.htm", url)
+        if not html:
+            continue
+        secs = parse_district_page(html)
+        vals = _lens_from_sections(secs)
+        vals["risks"] = _risk_uncertainty(secs)
+        per_district[d] = vals
+
+    def agg(lens):
+        xs = [v[lens] for v in per_district.values() if v.get(lens) is not None]
+        if not xs:
+            return None, None, None
+        mean = sum(xs) / len(xs)
+        breadth = sum(1 for x in xs if x > 0) / len(xs)
+        disp = (sum((x - mean) ** 2 for x in xs) / len(xs)) ** 0.5
+        return round(mean, 4), round(breadth, 4), round(disp, 4)
+
+    rec = {"date": rel.date.isoformat(), "ndist": len(per_district)}
+    for lens in ("growth", "inflation", "labor", "bottlenecks", "risks"):
+        m, b, s = agg(lens)
+        rec[lens] = m
+        rec[f"{lens}_breadth"] = b
+        rec[f"{lens}_disp"] = s
+    return rec
+
+
+# --------------------------------------------------------------------------- driver
+def build_books(start_year: int = 2011, debug: bool = False) -> list[dict]:
+    """Full 2011-present real ingestion. debug=True does only the latest 2 releases
+    and prints what parsed, so you can validate before a full backfill."""
+    rels = release_index(start_year)
+    if debug:
+        rels = rels[-2:]
+        print(f"DEBUG: scoring last {len(rels)} releases only")
+    books = []
+    for rel in rels:
+        rec = score_release(rel)
+        if rec:
+            books.append(rec)
+            if debug:
+                print(f"  {rec['date']} districts={rec['ndist']} "
+                      f"growth={rec['growth']} inflation={rec['inflation']} "
+                      f"labor={rec['labor']} risks={rec['risks']}")
+    books.sort(key=lambda r: r["date"])
+    print(f"build_books: scored {len(books)} real books")
+    return books
