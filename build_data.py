@@ -196,15 +196,62 @@ def build_real(start, end):
     return [d.date() for d in piv.index], L, laborTone, withhold
 
 
+def _synth_withhold(dates):
+    """Synthetic withholding overlay aligned to arbitrary release dates (1998+ only).
+    Real DTS withholding is a separate ingestion; this keeps the labor panel populated
+    until that series is wired."""
+    out = []
+    for i, d in enumerate(dates):
+        if d.year < 1998:
+            out.append(None)
+        else:
+            base = 4.0 + 2.5 * math.sin((d.year + d.month/12 - 1998) / 3.0)
+            out.append(round(base + 0.3 * math.sin(i * 1.3), 2))
+    return out
+
+
+def build_from_books(start_year, debug=False):
+    """REAL Beige Book lens scores (2011-present) via books.py ingestion.
+    Returns the same (dates, L, laborTone, withhold) shape as synthetic()/build_real()."""
+    from beigebook_altdata import books as BB
+    recs = BB.build_books(start_year=start_year, debug=debug)
+    if not recs:
+        raise SystemExit("no real books scored — check network / parsing (try --debug-books)")
+    dates = [dt.date.fromisoformat(r["date"]) for r in recs]
+
+    def series(key):
+        # forward-fill the occasional missing lens so the line stays continuous
+        vals, last = [], 0.0
+        for r in recs:
+            v = r.get(key)
+            last = v if v is not None else last
+            vals.append(round(last, 4))
+        return vals
+
+    L = {"growth": series("growth"), "inflation": series("inflation"),
+         "bottlenecks": series("bottlenecks"), "risks": series("risks")}
+    laborTone = series("labor")                 # labor is now its own real lens
+    withhold = _synth_withhold(dates)           # real DTS withholding still to be wired
+    return dates, L, laborTone, withhold
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--demo", action="store_true")
+    ap.add_argument("--demo", action="store_true", help="synthetic lenses (layout/testing)")
+    ap.add_argument("--real-books", action="store_true",
+                    help="ingest & score the real Beige Book (2011-present)")
+    ap.add_argument("--debug-books", action="store_true",
+                    help="score only the latest 2 real books and print what parsed")
     ap.add_argument("--start", type=int, default=1970)
+    ap.add_argument("--books-start", type=int, default=2011,
+                    help="first year for real book ingestion")
     ap.add_argument("--end", type=int, default=dt.date.today().year)
     ap.add_argument("--out", default="site/data.js")
     args = ap.parse_args()
 
-    if args.demo:
+    if args.real_books or args.debug_books:
+        dates, L, laborTone, withhold = build_from_books(args.books_start, debug=args.debug_books)
+    elif args.demo:
         dates, L, laborTone, withhold = synthetic()
     else:
         dates, L, laborTone, withhold = build_real(args.start, args.end)
@@ -225,9 +272,11 @@ def main():
     }
     if cpi_yoy:
         payload["cpiYoY"] = cpi_yoy         # real anchor for the dashboard's in-browser model
+    src = "real-books" if (args.real_books or args.debug_books) else ("synthetic" if args.demo else "pipeline")
+    payload["lens_source"] = src
     with open(args.out, "w") as fh:
         fh.write("window.DASHBOARD_DATA = " + json.dumps(payload) + ";\n")
-    print(f"wrote {args.out}: {len(dates)} books, as_of {payload['as_of']}, "
+    print(f"wrote {args.out}: {len(dates)} books ({src}), as_of {payload['as_of']}, "
           f"cpi {'real' if cpi_yoy else 'synthetic'}, topline {payload['topline']}")
 
 
