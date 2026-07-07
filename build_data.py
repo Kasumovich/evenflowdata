@@ -254,7 +254,7 @@ def main():
                     help="score only the latest 2 real books and print what parsed")
     ap.add_argument("--start", type=int, default=1970)
     ap.add_argument("--books-start", type=int, default=2011,
-                    help="first year for real book ingestion")
+                    help="first year for real book ingestion (per-district 2024+, single-page fallback earlier)")
     ap.add_argument("--end", type=int, default=dt.date.today().year)
     ap.add_argument("--out", default="site/data.js")
     args = ap.parse_args()
