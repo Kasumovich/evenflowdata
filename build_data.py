@@ -9,13 +9,15 @@ Writes:  window.DASHBOARD_DATA = { dates, lens, laborTone, withhold, hmVals, top
 The dashboard is presentation-only; everything it shows comes from this object.
 """
 from __future__ import annotations
-import argparse, datetime as dt, json, math
+import argparse, datetime as dt, json, math, os
 
 import numpy as np
 import pandas as pd
 
-from beigebook_altdata import forecast as F
-from beigebook_altdata.config import RULE_VERSION
+try:
+    from beigebook_altdata.config import RULE_VERSION
+except Exception:
+    RULE_VERSION = "v1"   # fallback when the package isn't importable (e.g. demo-only runs)
 
 NBER_F = [(1973+10/12, 1975+2/12), (1980, 1980+6/12), (1981+6/12, 1982+10/12),
           (1990+6/12, 1991+2/12), (2001+2/12, 2001+10/12), (2007+11/12, 2009+5/12),
@@ -54,24 +56,108 @@ def synthetic():
     return dates, L, laborTone, withhold
 
 
-def probabilities(dates, L):
-    """Fit the real statsmodels logits and return current probs + regime."""
-    rows = []
-    for i, d in enumerate(dates):
-        for lens in ("growth", "inflation", "bottlenecks", "risks"):
-            rows.append({"release": pd.Timestamp(d), "lens": lens, "composite": L[lens][i]})
-    feat = F.build_features(pd.DataFrame(rows))
-    recL = F.recession_label(feat.index)
-    cpi = F.stub_cpi_yoy(feat.index)            # swap for fetch_cpi_yoy() in production
-    infL = F.inflation_label(feat.index, cpi)
-    today = pd.Timestamp(dates[-1])
-    pRec, _ = F.fit_and_current(feat, recL, F.REC_FEATURES, today=today)
-    pInf, _ = F.fit_and_current(feat, infL, F.INF_FEATURES, today=today)
+def _cpi_stub(f):
+    """Synthetic CPI YoY, matching the dashboard fallback (used when real CPI is absent)."""
+    return 1.5 + 6*_g(f, 1979, 4) + 5*_g(f, 2022, 1.3) - 1.3*_g(f, 2009, 1.0) + 0.6*math.sin((f-1970)/3.0)
+
+
+def fetch_cpi_yoy(dates):
+    """Real headline CPI-U (all items, NSA) YoY %, via FRED series CPIAUCNS — the BLS
+    series behind the reported 12-month figure (e.g. 4.2% for May 2026).
+
+    Aligned point-in-time to each Beige Book release with a ~35-day publication lag, so
+    each release only 'sees' CPI that was actually published by then (no look-ahead).
+    Returns a list aligned to `dates`, or None if FRED_API_KEY is missing / fetch fails —
+    in which case the dashboard falls back to the synthetic curve + hardcoded live anchor.
+    """
+    key = os.environ.get("FRED_API_KEY")
+    if not key:
+        print("FRED_API_KEY not set — real CPI skipped (using synthetic anchor).")
+        return None
+    try:
+        import requests
+        r = requests.get("https://api.stlouisfed.org/fred/series/observations",
+                         params={"series_id": "CPIAUCNS", "api_key": key,
+                                 "file_type": "json", "observation_start": "1968-01-01"},
+                         timeout=30)
+        r.raise_for_status()
+        obs = sorted((dt.date.fromisoformat(o["date"]), float(o["value"]))
+                     for o in r.json()["observations"] if o["value"] not in (".", ""))
+    except Exception as e:
+        print(f"CPI fetch failed ({e}) — using synthetic anchor.")
+        return None
+    by_ym = {(d.year, d.month): v for d, v in obs}
+    yoy = [(d, (v / by_ym[(d.year-1, d.month)] - 1) * 100)
+           for d, v in obs if (d.year-1, d.month) in by_ym]
+    out = []
+    for rel in dates:
+        cutoff = rel - dt.timedelta(days=35)          # respect the ~monthly release lag
+        avail = [y for dd, y in yoy if dd <= cutoff]
+        out.append(round(avail[-1], 2) if avail else None)
+    first = next((x for x in out if x is not None), 2.0)
+    return [first if x is None else x for x in out]    # backfill the earliest gap
+
+
+def _fit_logit(X, y, iters=4000, lr=0.3, l2=0.02):
+    """Standardized logistic regression by gradient descent (matches the dashboard fit)."""
+    X = np.asarray(X, float); y = np.asarray(y, float)
+    mean = X.mean(0); sd = X.std(0); sd[sd == 0] = 1
+    Z = (X - mean) / sd
+    n, k = Z.shape; w = np.zeros(k); b = 0.0
+    for _ in range(iters):
+        p = 1 / (1 + np.exp(-(Z @ w + b)))
+        e = p - y
+        w -= lr * (Z.T @ e / n + l2 * w)
+        b -= lr * e.mean()
+    return w, b, mean, sd
+
+
+def _predict(model, x):
+    w, b, mean, sd = model
+    z = b + float(np.sum(w * ((np.asarray(x, float) - mean) / sd)))
+    return 1 / (1 + math.exp(-z))
+
+
+def probabilities(dates, L, laborTone, cpi_yoy=None):
+    """Authoritative 12m logits (this becomes DATA.topline, which the dashboard displays).
+
+    recession : growth level, growth momentum, risks, labor          vs NBER dates
+    inflation : actual CPI YoY (anchor), inflation tone, momentum,    vs CPI YoY > 2% in 12m
+                labor, bottlenecks
+    When cpi_yoy is real, BOTH the anchor feature and the >2% label use the real series,
+    so history is a genuine forecast rather than a synthetic illustration.
+    """
+    H = 8
+    N = len(dates)
+    fr = lambda d: d.year + (d.month - 1) / 12
+    cpi = cpi_yoy if cpi_yoy else [_cpi_stub(fr(d)) for d in dates]
+
+    Xr, yr, Xi, yi = [], [], [], []
+    for i in range(1, N - H):
+        f = fr(dates[i])
+        rec = 1 if any(not ((f + 1.0) < a or f > b) for a, b in NBER_F) else 0
+        Xr.append([L["growth"][i], L["growth"][i] - L["growth"][i-1], L["risks"][i], laborTone[i]])
+        yr.append(rec)
+        fut = cpi[i + H] if i + H < N else cpi[-1]
+        Xi.append([cpi[i], L["inflation"][i], L["inflation"][i] - L["inflation"][i-1],
+                   laborTone[i], L["bottlenecks"][i]])
+        yi.append(1 if fut > 2 else 0)
+
+    mr = _fit_logit(Xr, yr)
+    mi = _fit_logit(Xi, yi)
+    li = N - 1
+    cpi_now = cpi[li]
+    pRec = _predict(mr, [L["growth"][li], L["growth"][li] - L["growth"][li-1],
+                         L["risks"][li], laborTone[li]])
+    pInf = _predict(mi, [cpi_now, L["inflation"][li], L["inflation"][li] - L["inflation"][li-1],
+                         laborTone[li], L["bottlenecks"][li]])
+
     g, gprev = L["growth"][-1], L["growth"][-2]
     mom = g - gprev
     regime = ("Rising expansion" if mom >= 0 else "Slowing expansion") if g >= 0 \
              else ("Recovery" if mom >= 0 else "Recession")
-    return {"regime": regime, "pRec": round(pRec * 100, 1), "pInf": round(pInf * 100, 1)}
+    return {"regime": regime, "pRec": round(pRec * 100, 1), "pInf": round(pInf * 100, 1),
+            "cpi_now": round(cpi_now, 2)}
 
 
 def snapshot():
@@ -124,6 +210,7 @@ def main():
         dates, L, laborTone, withhold = build_real(args.start, args.end)
 
     hmVals, topics, feed = snapshot()
+    cpi_yoy = fetch_cpi_yoy(dates)          # real BLS CPI-U YoY (None if no FRED key)
     last = dates[-1]
     next_release = last + dt.timedelta(days=round(365.25 / 8))  # ~next scheduled book
     payload = {
@@ -134,12 +221,14 @@ def main():
         "dates": [d.isoformat() for d in dates],
         "lens": L, "laborTone": laborTone, "withhold": withhold,
         "hmVals": hmVals, "topics": topics, "feed": feed,
-        "topline": probabilities(dates, L),
+        "topline": probabilities(dates, L, laborTone, cpi_yoy),
     }
+    if cpi_yoy:
+        payload["cpiYoY"] = cpi_yoy         # real anchor for the dashboard's in-browser model
     with open(args.out, "w") as fh:
         fh.write("window.DASHBOARD_DATA = " + json.dumps(payload) + ";\n")
     print(f"wrote {args.out}: {len(dates)} books, as_of {payload['as_of']}, "
-          f"topline {payload['topline']}")
+          f"cpi {'real' if cpi_yoy else 'synthetic'}, topline {payload['topline']}")
 
 
 if __name__ == "__main__":
