@@ -414,10 +414,10 @@
     var regime=expansion?(rising?"Rising expansion":"Slowing expansion"):(rising?"Recovery":"Recession");
     document.getElementById("regimeState").textContent=regime;
     document.getElementById("regimeSub").textContent="growth "+fmtv(gL)+" · momentum "+(gMom>=0?"+":"\u2212")+Math.abs(gMom).toFixed(2);
-    document.getElementById("pRec").textContent=pRec+"%";
-    document.getElementById("pInf").textContent=pInf+"%";
-    document.getElementById("pRecBar").style.width=pRec+"%";
-    document.getElementById("pInfBar").style.width=pInf+"%";
+    document.getElementById("pRec").textContent=isFinite(pRec)?pRec+"%":"\u2014";
+    document.getElementById("pInf").textContent=isFinite(pInf)?pInf+"%":"\u2014";
+    document.getElementById("pRecBar").style.width=(isFinite(pRec)?pRec:0)+"%";
+    document.getElementById("pInfBar").style.width=(isFinite(pInf)?pInf:0)+"%";
 
     var cx=66,cy=66;
     function sx(v){return Math.max(12,Math.min(120,cx+(v/0.8)*52));}
