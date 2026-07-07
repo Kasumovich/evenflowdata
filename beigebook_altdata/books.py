@@ -214,19 +214,33 @@ def parse_district_page(html: str) -> dict[str, str]:
 
 
 # ------------------------------------------------------------------------ scoring
+def _route_section(name: str) -> set:
+    """Which lenses a section header feeds, by keyword — robust across eras.
+    2024+ per-district pages use 'Summary of Economic Activity / Labor Markets / Prices';
+    pre-2024 single-page books use topic headers 'Manufacturing / Consumer Spending /
+    Employment and Wages / Prices / Nonfinancial Services'. Keywords catch both."""
+    n = name.lower()
+    lenses = set()
+    if "price" in n:
+        lenses.add("inflation")
+    if any(k in n for k in ("labor", "employ", "wage")) and "price" not in n:
+        lenses.add("labor")
+    if any(k in n for k in ("summary", "overall", "activity", "manufactur", "consumer",
+                            "spending", "service", "retail", "tourism", "economic")):
+        lenses.add("growth")
+    if any(k in n for k in _MANU_KEYS):
+        lenses.add("bottlenecks")
+    return lenses
+
+
 def _lens_from_sections(sections: dict[str, str]) -> dict[str, float | None]:
-    """Score one district's sections into the four ladder lenses (+ raw text for risk)."""
-    out: dict[str, float | None] = {}
-    for lens, names in LENS_SECTIONS.items():
-        texts = []
-        for name, text in sections.items():
-            if name in names:
-                texts.append(text)
-            elif lens == "bottlenecks" and any(k in name.lower() for k in _MANU_KEYS):
-                texts.append(text)
-        joined = " ".join(texts)
-        out[lens] = lexicon.diffusion(joined) if joined else None
-    return out
+    """Score a page's sections into the four ladder lenses via keyword routing."""
+    buckets: dict[str, list[str]] = {"growth": [], "inflation": [], "labor": [], "bottlenecks": []}
+    for name, text in sections.items():
+        for lens in _route_section(name):
+            buckets[lens].append(text)
+    return {lens: (lexicon.diffusion(" ".join(txts)) if txts else None)
+            for lens, txts in buckets.items()}
 
 
 def _risk_uncertainty(sections: dict[str, str]) -> float | None:
@@ -251,19 +265,28 @@ def score_release(rel: Release) -> dict | None:
         return None
     rel.date = _refine_date(landing, rel.ym)
     links = _district_links(landing, rel.ym)
-    if len(links) < 6:
-        print(f"  {rel.ym}: only {len(links)} district links found")
-        return None
 
     per_district: dict[str, dict[str, float | None]] = {}
-    for d, url in links.items():
-        html = _cached(f"bb_{rel.ym}_{_norm(d).replace(' ', '-')}.htm", url)
-        if not html:
-            continue
-        secs = parse_district_page(html)
+    if len(links) >= 6:
+        # modern era: one page per district
+        for d, url in links.items():
+            html = _cached(f"bb_{rel.ym}_{_norm(d).replace(' ', '-')}.htm", url)
+            if not html:
+                continue
+            secs = parse_district_page(html)
+            vals = _lens_from_sections(secs)
+            vals["risks"] = _risk_uncertainty(secs)
+            per_district[d] = vals
+    else:
+        # pre-2024 era: the whole book is on the landing page (topic-organized).
+        # Score it as a single national observation.
+        secs = parse_district_page(landing)
+        if len(secs) < 2:
+            print(f"  {rel.ym}: single-page parse found {len(secs)} sections — skipped")
+            return None
         vals = _lens_from_sections(secs)
         vals["risks"] = _risk_uncertainty(secs)
-        per_district[d] = vals
+        per_district["National"] = vals
 
     def agg(lens):
         xs = [v[lens] for v in per_district.values() if v.get(lens) is not None]
