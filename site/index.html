@@ -453,11 +453,20 @@
   document.getElementById("feed").innerHTML=feed.map(function(f){
     return '<div><div class="src">'+f.d+" · "+f.l+'</div><div class="txt">'+f.t+'</div></div>';}).join("");
 
-  // recession band plugin (works on x index scale, tracks zoom)
+  // recession band plugin — maps NBER year-spans to the ACTUAL book index via the
+  // real dates array (not a hardcoded 1970 start), so bands land correctly for any range.
+  function yearToIndex(y){
+    // nearest book whose fractional year is closest to y
+    var best=0,bd=1e9;
+    for(var i=0;i<N;i++){var f=dates[i].getFullYear()+dates[i].getMonth()/12;var d=Math.abs(f-y);if(d<bd){bd=d;best=i;}}
+    return best;
+  }
   function recBands(){return {id:"rec",beforeDatasetsDraw:function(c){
     var xs=c.scales.x,ya=c.chartArea;if(!xs)return;var ctx=c.ctx;ctx.save();ctx.fillStyle="rgba(22,26,33,.07)";
+    var y0=dates[0].getFullYear(), y1=dates[N-1].getFullYear();
     NBER.forEach(function(r){
-      var i0=(r[0]-1970)*8, i1=(r[1]-1970)*8; // ~8 books/yr from 1970
+      if(r[1]<y0||r[0]>y1)return;                 // skip recessions outside the loaded range
+      var i0=yearToIndex(r[0]), i1=yearToIndex(r[1]);
       var x0=Math.max(ya.left,xs.getPixelForValue(i0)),x1=Math.min(ya.right,xs.getPixelForValue(i1));
       if(x1>x0)ctx.fillRect(x0,ya.top,x1-x0,ya.bottom-ya.top);
     });ctx.restore();
@@ -488,7 +497,7 @@
       parsing:false,borderColor:s.color,borderWidth:1.4,pointRadius:0,tension:0.2};})},
     options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
       scales:{x:{type:"linear",min:0,max:N-1,ticks:{callback:tickCb,maxTicksLimit:10,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{display:false}},
-        y:{min:-1.4,max:1.6,title:{display:true,text:"diffusion (raw)",color:"#8A929E",font:{size:10}},ticks:{color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{color:"rgba(22,26,33,.07)"}}},
+        y:{min:-2,max:2,title:{display:true,text:"diffusion (raw, \u00B12)",color:"#8A929E",font:{size:10}},ticks:{stepSize:1,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{color:"rgba(22,26,33,.07)"}}},
       plugins:{legend:{display:false},tooltip:{callbacks:{title:function(it){return labelFine(it[0].parsed.x);}}},zoom:zoomCfg(document.getElementById("read1"))}},
     plugins:[recBands()]
   });
