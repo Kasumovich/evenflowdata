@@ -282,3 +282,23 @@ def main():
     }
     if cpi_yoy:
         payload["cpiYoY"] = cpi_yoy         # real anchor for the dashboard's in-browser model
+    src = "real-books" if (args.real_books or args.debug_books) else ("synthetic" if args.demo else "pipeline")
+    payload["lens_source"] = src
+    with open(args.out, "w") as fh:
+        fh.write("window.DASHBOARD_DATA = " + json.dumps(payload) + ";\n")
+    print(f"wrote {args.out}: {len(dates)} books ({src}), as_of {payload['as_of']}, "
+          f"cpi {'real' if cpi_yoy else 'synthetic'}, topline {payload['topline']}")
+
+
+if __name__ == "__main__":
+    import sys, traceback
+    print("build_data starting", flush=True)
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException:
+        print("BUILD FAILED — traceback follows:", flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.exit(1)
