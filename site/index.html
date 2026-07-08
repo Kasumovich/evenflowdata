@@ -161,12 +161,12 @@
     <div class="phead">
       <div>
         <p class="panel-title">Four-lens history — smoothed benchmark</p>
-        <p class="panel-note">two-sided moving average · uses hindsight, so NOT point-in-time · smooths book-to-book noise to reveal the cycle · grey bands = NBER recessions</p>
+        <p class="panel-note">LOESS local-regression curve · uses hindsight, so NOT point-in-time · fits a smooth curve through the book-to-book scatter to reveal the cycle · grey bands = NBER recessions</p>
       </div>
       <div class="ctrls"><span class="hint">click a lens to toggle</span><button id="reset3">reset</button></div>
     </div>
     <div class="lgnd" id="lgndS"></div>
-    <div class="chart-wrap"><canvas id="lensSmooth" role="img" aria-label="Smoothed two-sided moving average of the four lens composites, 1970 to 2026, shown as a hindsight benchmark (not point-in-time)."></canvas></div>
+    <div class="chart-wrap"><canvas id="lensSmooth" role="img" aria-label="LOESS local-regression curve through the four lens composites, 1970 to 2026, shown as a hindsight benchmark (not point-in-time)."></canvas></div>
     <p class="read" id="read3">showing 1970 – 2026 · smoothed benchmark (hindsight)</p>
   </div>
 
@@ -561,12 +561,33 @@
   document.getElementById("reset1").addEventListener("click",function(){resetChart(lensChart,document.getElementById("read1"),"1970","2026");});
   document.getElementById("reset2").addEventListener("click",function(){resetChart(laborChart,document.getElementById("read2"),whYear,"2026",whStart);});
 
-  // --- smoothed benchmark: two-sided moving average (uses hindsight -> NOT point-in-time) ---
-  function smooth(arr,half){return arr.map(function(_,i){var s=0,n=0,lo=Math.max(0,i-half),hi=Math.min(arr.length-1,i+half);for(var j=lo;j<=hi;j++){if(arr[j]!=null){s+=arr[j];n++;}}return n?round(s/n):null;});}
-  var SMH=7;   // half-window in books (~1.5-2yr each side); wider = smoother
+  // --- smoothed benchmark: LOESS local-regression curve (uses hindsight -> NOT point-in-time) ---
+  // LOESS: local weighted linear regression (tricube kernel) — a real curve through
+  // the data, better at turns/ends than a moving average. Two-sided => uses hindsight.
+  function loess(y,span){
+    var n=y.length,r=Math.max(3,Math.floor(span*n)),out=new Array(n);
+    for(var i=0;i<n;i++){
+      var pts=[],d=0;
+      while(pts.length<r&&d<n){
+        if(d===0){if(y[i]!=null)pts.push(i);}
+        else{var a=i-d,b=i+d; if(a>=0&&y[a]!=null)pts.push(a); if(b<n&&y[b]!=null)pts.push(b);}
+        d++;
+      }
+      if(pts.length<3){out[i]=y[i];continue;}
+      var maxd=1; for(var k=0;k<pts.length;k++){var dd=Math.abs(pts[k]-i); if(dd>maxd)maxd=dd;}
+      var sw=0,swx=0,swy=0,swxx=0,swxy=0;
+      for(var k=0;k<pts.length;k++){var xj=pts[k],u=Math.abs(xj-i)/maxd,w=Math.pow(1-u*u*u,3);
+        sw+=w;swx+=w*xj;swy+=w*y[xj];swxx+=w*xj*xj;swxy+=w*xj*y[xj];}
+      var det=sw*swxx-swx*swx;
+      if(Math.abs(det)<1e-9){out[i]=round(swy/sw);continue;}
+      var bb=(sw*swxy-swx*swy)/det,aa=(swy-bb*swx)/sw; out[i]=round(aa+bb*i);
+    }
+    return out;
+  }
+  var SPAN=0.05;   // fraction of books in each local fit (~2-3yr window); larger = smoother
   var lensSmooth=new Chart(document.getElementById("lensSmooth"),{
     type:"line",
-    data:{datasets:series.map(function(sr){return {label:sr.label,data:smooth(lens[sr.key],SMH).map(function(y,i){return {x:i,y:y};}),parsing:false,borderColor:sr.color,borderWidth:2,pointRadius:0,tension:0.4};})},
+    data:{datasets:series.map(function(sr){return {label:sr.label,data:loess(lens[sr.key],SPAN).map(function(y,i){return {x:i,y:y};}),parsing:false,borderColor:sr.color,borderWidth:2,pointRadius:0,tension:0.4};})},
     options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
       scales:{x:{type:"linear",min:0,max:N-1,ticks:{callback:tickCb,maxTicksLimit:10,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{display:false}},
         y:{min:-2,max:2,title:{display:true,text:"diffusion (smoothed)",color:"#8A929E",font:{size:10}},ticks:{stepSize:1,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{color:"rgba(22,26,33,.07)"}}},
