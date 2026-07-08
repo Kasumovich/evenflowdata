@@ -156,7 +156,7 @@
   <div class="row2">
     <div class="card" style="margin:0">
       <p class="panel-title">District × lens — latest book</p>
-      <p class="panel-note">colour spread is the dispersion (σ)</p>
+      <p class="panel-note">each cell = that district’s lens level · latest book</p>
       <div id="heatmap"></div>
       <div class="legend"><span>contracting</span>
         <i style="background:#C2491F"></i><i style="background:#E89A7C"></i><i style="background:#E7E5DF"></i><i style="background:#7FCBB0"></i><i style="background:#0F6E56"></i>
@@ -169,11 +169,6 @@
     </div>
   </div>
 
-  <div class="card">
-    <p class="panel-title">What firms are saying</p>
-    <p class="panel-note">paraphrased, never verbatim · latest book</p>
-    <div class="feed" id="feed"></div>
-  </div>
 
   <div class="card">
     <div class="phead">
@@ -350,11 +345,6 @@
   var hmDistricts=["Boston","New York","Philadelphia","Cleveland","Richmond","Atlanta","Chicago","St. Louis","Minneapolis","Kansas City","Dallas","San Francisco"];
   var hmVals=(DATA&&DATA.hmVals)||[[.3,.5,-.2,.4],[.4,.6,-.1,.5],[.2,.5,-.3,.3],[.1,.4,0,.2],[.3,.6,-.2,.4],[.5,.5,-.4,.6],[.2,.5,-.1,.3],[.3,.4,-.2,.2],[.1,.3,.1,.1],[.4,.6,-.3,.5],[.6,.7,-.5,.7],[-.1,.4,.2,.5]];
   var topics=(DATA&&DATA.topics)||[{n:"Tariffs / trade",w:74,up:true},{n:"Labor availability",w:58,up:false},{n:"Supply chain",w:41,up:true},{n:"Credit conditions",w:33,up:false},{n:"AI / automation",w:29,up:true}];
-  var feed=(DATA&&DATA.feed)||[
-    {d:"Dallas",l:"Bottleneck",t:"Contacts described ongoing difficulty filling skilled trade roles, with several pausing projects until staffing improves."},
-    {d:"Atlanta",l:"Inflation",t:"Firms reported input costs easing but said they were still passing earlier increases through to customers."},
-    {d:"San Francisco",l:"Risk",t:"Several contacts flagged heightened trade-policy uncertainty as a reason to delay capital plans."}
-  ];
   // ===================== END DATA BLOCK ==============================
 
   function round(x){return Math.round(x*1000)/1000;}
@@ -453,9 +443,6 @@
     return '<div class="topic"><span class="n">'+t.n+'</span><span class="bar"><i style="width:'+t.w+'%"></i></span>'+
       '<span class="tag '+(t.up?"rising":"steady")+'">'+(t.up?"\u25B2 rising":"steady")+'</span></div>';}).join("");
 
-  // feed
-  document.getElementById("feed").innerHTML=feed.map(function(f){
-    return '<div><div class="src">'+f.d+" · "+f.l+'</div><div class="txt">'+f.t+'</div></div>';}).join("");
 
   // recession band plugin — maps NBER year-spans to the ACTUAL book index via the
   // real dates array (not a hardcoded 1970 start), so bands land correctly for any range.
