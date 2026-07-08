@@ -188,7 +188,8 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
     #   /beige-book-reports/{YYYY}/{YYYY-MM}-su
     # We probe each month and score the summary as a single national document (like
     # the 2011-2023 single-page era). District pages (-bo, -ny, ... -sf) exist too but
-    # aren't needed for the national score. Beige Book era is 1983+ (earlier 404s).
+    # aren't needed for the national score. National summaries run back to ~1970 (the
+    # confidential Redbook era, ~monthly then; Beige Book proper from 1983, 8x/year).
     minn: dict[str, str] = {}
     for y in range(start_year, min(end_year, 1995) + 1):
         n0 = len(minn)
@@ -198,7 +199,7 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
             if h and "National Summary" in h:        # real summary (not a soft-404 shell)
                 minn[f"{y}{mm:02d}"] = url
         got = len(minn) - n0
-        if start_year <= 1995 and got == 0 and y >= 1983:
+        if start_year <= 1995 and got == 0:          # flag any year with no summaries
             print(f"  release_index: {y} — no Minneapolis summaries resolved")
 
     # ---- assemble --------------------------------------------------------------
@@ -558,4 +559,4 @@ def build_books(start_year: int = 2011, debug: bool = False) -> list[dict]:
                       f"labor={rec['labor']} risks={rec['risks']}")
     books.sort(key=lambda r: r["date"])
     print(f"build_books: scored {len(books)} real books")
-    return books  
+    return books
