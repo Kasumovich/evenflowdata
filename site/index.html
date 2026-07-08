@@ -568,3 +568,24 @@
       }
     }
     function csv(){
+      var head=["release_date","growth","inflation","bottlenecks","risks","labor_tone","withholding_yoy_pct"];
+      var lines=[head.join(",")];
+      for(var i=0;i<N;i++){
+        lines.push([dates[i].toISOString().slice(0,10),
+          lens.growth[i], lens.inflation[i], lens.bottlenecks[i], lens.risks[i],
+          (laborTone[i]==null?"":laborTone[i]),
+          (withhold[i]==null?"":withhold[i])].join(","));
+      }
+      return lines.join("\n");
+    }
+    document.getElementById("dlCsv").addEventListener("click",function(){
+      var blob=new Blob([csv()],{type:"text/csv;charset=utf-8"});
+      var url=URL.createObjectURL(blob), a=document.createElement("a");
+      a.href=url; a.download="beigebook_panel_"+asof+".csv"; document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    });
+  })();
+})();
+</script>
+</body>
+</html>
