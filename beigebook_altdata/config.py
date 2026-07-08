@@ -59,3 +59,37 @@ RELEASES_PER_YEAR = 8
 
 # Frozen scoring-rule version (see SCORING.md). Bump to v2 as a NEW column; never overwrite.
 RULE_VERSION = "v1"
+
+
+# --- Topic-attention router -------------------------------------------------
+# theme -> trigger terms (whole-word/phrase, case-insensitive). The router counts
+# hits over the LATEST book's full text, shows top themes by word-share, and marks
+# up/down by share drift vs the prior book. Derived counts only (text is public
+# domain); tune terms freely without touching the scoring pipeline.
+THEMES = {
+    "Tariffs / trade":       ["tariff", "tariffs", "trade policy", "import", "imports",
+                              "export", "exports", "duties", "trade war"],
+    "Labor availability":    ["labor shortage", "hiring", "worker shortage", "staffing",
+                              "applicants", "turnover", "workforce", "labor market",
+                              "hard to fill", "difficulty finding", "job openings"],
+    "Wages":                 ["wage", "wages", "compensation", "pay increase",
+                              "pay increases", "salaries", "labor costs"],
+    "Supply chain":          ["supply chain", "supply chains", "shipping", "freight",
+                              "logistics", "backlog", "backlogs", "bottleneck",
+                              "bottlenecks", "lead times", "delivery times"],
+    "Prices / costs":        ["input cost", "input costs", "cost pressure", "cost pressures",
+                              "price increase", "price increases", "raw material",
+                              "raw materials", "pass through", "passed on", "margins"],
+    "Credit conditions":     ["credit", "lending", "loan demand", "loans", "delinquenc",
+                              "borrowing", "interest rate", "interest rates", "financing"],
+    "Housing / real estate": ["housing", "home sales", "residential", "mortgage",
+                              "real estate", "rents", "construction", "vacancy"],
+    "AI / automation":       ["automation", "artificial intelligence", "ai", "data center",
+                              "data centers", "robotics", "machine learning"],
+    "Energy":                ["energy prices", "oil", "natural gas", "gasoline", "fuel",
+                              "electricity", "utilities"],
+    "Consumer demand":       ["consumer spending", "retail sales", "discretionary",
+                              "foot traffic", "consumer demand", "spending softened"],
+    "Uncertainty":           ["uncertainty", "uncertain", "unclear", "wait-and-see",
+                              "cautious", "caution", "hesitant", "on hold"],
+}
