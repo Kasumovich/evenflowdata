@@ -28,6 +28,29 @@ LADDER = {
 NEGATORS = {"not", "no", "never", "without", "little", "few", "hardly", "barely"}
 _WORD = re.compile(r"[a-z]+(?:\s[a-z]+)?")
 
+# Risk lens vocabulary: uncertainty / caution / disruption language. Density of these
+# words (per 1000 words) is the risk signal — more hedging and worry => higher risk.
+RISK_WORDS = {
+    "uncertain", "uncertainty", "uncertainties", "risk", "risks", "risky",
+    "cautious", "caution", "cautiously", "concern", "concerns", "concerned",
+    "volatile", "volatility", "tariff", "tariffs", "disruption", "disruptions",
+    "disrupt", "disrupted", "hesitant", "hesitancy", "hesitation", "pause",
+    "paused", "pausing", "unpredictable", "instability", "unstable", "worry",
+    "worried", "worries", "fear", "fears", "doubt", "doubts", "nervous",
+    "wary", "unease", "uneasy", "headwinds", "downside",
+}
+
+
+def risk_density(text: str) -> float | None:
+    """Uncertainty/risk-word density mapped to a 0..+2 risk level.
+    ~4 risk-words per 1000 -> ~1.0; ~8 per 1000 -> 2.0 (v1 calibration, tunable)."""
+    toks = _tokens(text)
+    if not toks:
+        return None
+    hits = sum(1 for w in toks if w in RISK_WORDS)
+    per_k = 1000.0 * hits / len(toks)
+    return round(min(per_k / 4.0, 2.0), 4)
+
 try:
     from pysentiment2 import LM
     _lm = LM()
