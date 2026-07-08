@@ -142,7 +142,7 @@
     <div class="phead">
       <div>
         <p class="panel-title">Four-lens history</p>
-        <p class="panel-note">raw diffusion score by book, 1970–present · anchored z kept in the data (raw_ladder + z_anchored) · grey bands = NBER recessions · scroll / drag to zoom</p>
+        <p class="panel-note">raw diffusion score by book (adjective ladder over Beige Book text) · grey bands = NBER recessions · scroll / drag to zoom</p>
       </div>
       <div class="ctrls"><span class="hint">click a lens to toggle</span><button id="reset1">reset</button></div>
     </div>
@@ -244,10 +244,14 @@
     reading is a true point-in-time vintage — the number you actually had in hand that day.
     Use <strong>Download CSV</strong> to export the full history.</p>
 
-    <p style="color:var(--faint);font-size:12px">In this preview build the inflation anchor
-    uses <strong>real BLS CPI-U</strong> and the recession labels use <strong>real NBER dates</strong>;
-    the Beige Book lens scores themselves are synthetic placeholders until live book ingestion is
-    wired. Use <strong>Download CSV</strong> to export the full history.</p>
+    <p style="color:var(--faint);font-size:12px"><strong>What's real vs placeholder.</strong>
+    Real: the four lens scores (growth, inflation, labor, risks), scored by the adjective
+    ladder over the actual Beige Book text (1996&ndash;present); the inflation anchor
+    (<strong>BLS CPI-U</strong>); and the <strong>NBER</strong> recession dates. Still
+    placeholder: the withholding overlay, the district heat-grid for pre-2024 books (those
+    are scored at national level), and the topic-attention feed &mdash; these are clearly
+    labeled here and will be wired to real sources next. Use <strong>Download CSV</strong>
+    to export the full history.</p>
   </details>
 
 </div>
@@ -333,7 +337,7 @@
   // When the pipeline scored REAL Beige Book text, correct the honesty note.
   if(DATA && DATA.lens_source==="real-books"){
     var _n=document.getElementById("tlNote");
-    if(_n) _n.textContent="regime classifies the latest book \u00B7 12m logits on REAL Beige Book lens scores (2011\u2013present): recession ~ growth, momentum, risk, labor (vs real NBER dates); inflation>2% ~ real BLS CPI-U anchor (~4.2% latest), inflation tone, momentum, labor, bottlenecks \u00B7 CPI, NBER dates and the Beige Book lens scores are all real";
+    if(_n) _n.textContent="regime classifies the latest book \u00B7 12m logits on real Beige Book lens scores: recession ~ growth, momentum, risk, labor (vs real NBER dates); inflation>2% ~ real BLS CPI-U anchor, inflation tone, momentum, labor, bottlenecks \u00B7 REAL: the four lens scores (adjective-ladder over the actual Beige Book text), BLS CPI, NBER recession dates \u00B7 STILL PLACEHOLDER: the withholding overlay, the district heat-grid for pre-2024 books, and the topic-attention feed";
   }
 
   // latest-book snapshot panels (synthetic)
@@ -501,9 +505,13 @@
       plugins:{legend:{display:false},tooltip:{callbacks:{title:function(it){return labelFine(it[0].parsed.x);}}},zoom:zoomCfg(document.getElementById("read1"))}},
     plugins:[recBands()]
   });
-  // custom toggle legend
+  // custom toggle legend — Growth & Inflation shown by default; Labor & Risks start hidden
+  // (click their chips to reveal). Real data is volatile, so fewer lines read better.
+  var DEFAULT_HIDDEN={2:true,3:true};   // 2=Labor, 3=Risks
   document.getElementById("lgnd").innerHTML=series.map(function(s,i){
-    return '<span class="chip" data-i="'+i+'"><i style="background:'+s.color+'"></i>'+s.label+'</span>';}).join("");
+    return '<span class="chip'+(DEFAULT_HIDDEN[i]?" off":"")+'" data-i="'+i+'"><i style="background:'+s.color+'"></i>'+s.label+'</span>';}).join("");
+  series.forEach(function(s,i){ if(DEFAULT_HIDDEN[i]) lensChart.getDatasetMeta(i).hidden=true; });
+  lensChart.update();
   document.querySelectorAll("#lgnd .chip").forEach(function(ch){
     ch.addEventListener("click",function(){var i=+ch.dataset.i;var meta=lensChart.getDatasetMeta(i);
       meta.hidden=!meta.hidden;ch.classList.toggle("off",meta.hidden);lensChart.update();});});
