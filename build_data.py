@@ -261,6 +261,39 @@ def _topics_from_recs(recs, top_n=6):
             for name, s, ps in rows]
 
 
+_LENS_IDX = {"growth": 0, "inflation": 1, "labor": 2, "risks": 3}   # column order in cells
+
+
+def _median(xs):
+    s = sorted(xs); n = len(s)
+    if not n:
+        return None
+    m = n // 2
+    return s[m] if n % 2 else (s[m - 1] + s[m]) / 2.0
+
+
+def _trimmed(xs):
+    """Mean after dropping one lowest + one highest district (n>=3); else plain mean."""
+    s = sorted(xs)
+    if len(s) >= 3:
+        s = s[1:-1]
+    return (sum(s) / len(s)) if s else None
+
+
+def _cross_district_series(recs, lens_idx, reducer):
+    """Reduce each book's per-district values for one lens, forward-filling gaps.
+    Aggregates the RAW per-district cells (real districts only) — a pure cross-section
+    of each book's own districts, so it stays as frozen/unrevised as the mean."""
+    vals, last = [], 0.0
+    for r in recs:
+        col = [row[lens_idx] for row in (r.get("cells") or {}).values()
+               if row and row[lens_idx] is not None]
+        v = reducer(col) if col else None
+        last = v if v is not None else last
+        vals.append(round(last, 4))
+    return vals
+
+
 def build_from_books(start_year, debug=False):
     """REAL Beige Book lens scores (2011-present) via books.py ingestion.
     Returns the same (dates, L, laborTone, withhold) shape as synthetic()/build_real()."""
@@ -285,7 +318,18 @@ def build_from_books(start_year, debug=False):
     withhold = _synth_withhold(dates)           # real DTS withholding still to be wired
     hm_real = _grid_from_cells(recs[-1].get("cells"))   # real per-district snap, latest book
     topics_real = _topics_from_recs(recs)               # real topic-attention router
-    return dates, L, laborTone, withhold, hm_real, topics_real
+    # Alternate cross-district aggregations for the four-lens chart toggle. Mean is the
+    # existing L/laborTone; add median + trimmed-mean (both frozen/unrevised).
+    lens_agg = {name: {"median": _cross_district_series(recs, idx, _median),
+                       "trim":   _cross_district_series(recs, idx, _trimmed)}
+                for name, idx in _LENS_IDX.items()}
+    # Stable per-district store: 12x4 grid per book in DISTRICTS order, or None for
+    # national-summary-only books. Persisted for a future regional view; no UI yet.
+    cells_hist = [_grid_from_cells(r.get("cells")) if r.get("ndist", 0) >= 6 else None
+                  for r in recs]
+    extras = {"hm_real": hm_real, "topics_real": topics_real,
+              "lens_agg": lens_agg, "cells_hist": cells_hist}
+    return dates, L, laborTone, withhold, extras
 
 
 def main():
@@ -302,19 +346,19 @@ def main():
     ap.add_argument("--out", default="site/data.js")
     args = ap.parse_args()
 
-    hm_real = topics_real = None
+    extras = {}
     if args.real_books or args.debug_books:
-        dates, L, laborTone, withhold, hm_real, topics_real = build_from_books(args.books_start, debug=args.debug_books)
+        dates, L, laborTone, withhold, extras = build_from_books(args.books_start, debug=args.debug_books)
     elif args.demo:
         dates, L, laborTone, withhold = synthetic()
     else:
         dates, L, laborTone, withhold = build_real(args.start, args.end)
 
     hmVals, topics, feed = snapshot()
-    if hm_real:                                  # real per-district snap replaces the placeholder grid
-        hmVals = hm_real
-    if topics_real:                              # real topic-attention router replaces the placeholder
-        topics = topics_real
+    if extras.get("hm_real"):                    # real per-district snap replaces the placeholder grid
+        hmVals = extras["hm_real"]
+    if extras.get("topics_real"):                # real topic-attention router replaces the placeholder
+        topics = extras["topics_real"]
     cpi_yoy = fetch_cpi_yoy(dates)          # real BLS CPI-U YoY (None if no FRED key)
     last = dates[-1]
     next_release = last + dt.timedelta(days=round(365.25 / 8))  # ~next scheduled book
@@ -326,6 +370,8 @@ def main():
         "dates": [d.isoformat() for d in dates],
         "lens": L, "laborTone": laborTone, "withhold": withhold,
         "hmVals": hmVals, "topics": topics, "feed": feed,
+        "lensAgg": extras.get("lens_agg"),      # median/trim alt series for the chart toggle
+        "cellsHist": extras.get("cells_hist"),  # per-district history (stable regional store)
         "topline": probabilities(dates, L, laborTone, cpi_yoy),
     }
     if cpi_yoy:
