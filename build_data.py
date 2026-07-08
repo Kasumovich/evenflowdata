@@ -181,9 +181,7 @@ def snapshot():
               {"n": "Supply chain", "w": 41, "up": True},
               {"n": "Credit conditions", "w": 33, "up": False},
               {"n": "AI / automation", "w": 29, "up": True}]
-    feed = [{"d": "Dallas", "l": "Bottleneck", "t": "Contacts described ongoing difficulty filling skilled trade roles."},
-            {"d": "Atlanta", "l": "Inflation", "t": "Firms said input costs eased but they kept passing earlier increases to customers."},
-            {"d": "San Francisco", "l": "Risk", "t": "Several contacts flagged trade-policy uncertainty as a reason to delay capital plans."}]
+    feed = []   # "What firms are saying" panel removed from the dashboard
     return hmVals, topics, feed
 
 
@@ -220,6 +218,49 @@ def _synth_withhold(dates):
     return out
 
 
+def _grid_from_cells(cells):
+    """Latest book's per-district cells -> 12x4 heat-grid in DISTRICTS row order,
+    columns [growth, inflation, labor, risk]. Missing value -> 0.0 (neutral)."""
+    if not cells:
+        return None
+    from beigebook_altdata.config import DISTRICTS
+    grid = []
+    for d in DISTRICTS:
+        row = cells.get(d) or [None, None, None, None]
+        grid.append([round(x, 4) if isinstance(x, (int, float)) else 0.0 for x in row])
+    return grid
+
+
+def _topics_from_recs(recs, top_n=6):
+    """Real topic-attention router: theme word-share in the LATEST book, top N by
+    share, with up/down = share drift vs the prior book. Returns [{n,w,up}] or None."""
+    if not recs:
+        return None
+    latest = recs[-1]
+    counts = latest.get("theme_counts") or {}
+    nwords = latest.get("nwords") or 0
+    if not counts or not nwords:
+        return None
+    prev = recs[-2] if len(recs) >= 2 else None
+    pcounts = (prev or {}).get("theme_counts") or {}
+    pnwords = (prev or {}).get("nwords") or 0
+    share = lambda c, n: (c / n) if n else 0.0
+    rows = []
+    for name, c in counts.items():
+        if c <= 0:
+            continue
+        s = share(c, nwords)
+        ps = share(pcounts.get(name, 0), pnwords) if pnwords else s
+        rows.append((name, s, ps))
+    if not rows:
+        return None
+    rows.sort(key=lambda r: r[1], reverse=True)
+    rows = rows[:top_n]
+    top = rows[0][1] or 1e-9
+    return [{"n": name, "w": max(6, round(100 * s / top)), "up": bool(s >= ps)}
+            for name, s, ps in rows]
+
+
 def build_from_books(start_year, debug=False):
     """REAL Beige Book lens scores (2011-present) via books.py ingestion.
     Returns the same (dates, L, laborTone, withhold) shape as synthetic()/build_real()."""
@@ -242,7 +283,9 @@ def build_from_books(start_year, debug=False):
          "bottlenecks": series("bottlenecks"), "risks": series("risks")}
     laborTone = series("labor")                 # labor is now its own real lens
     withhold = _synth_withhold(dates)           # real DTS withholding still to be wired
-    return dates, L, laborTone, withhold
+    hm_real = _grid_from_cells(recs[-1].get("cells"))   # real per-district snap, latest book
+    topics_real = _topics_from_recs(recs)               # real topic-attention router
+    return dates, L, laborTone, withhold, hm_real, topics_real
 
 
 def main():
@@ -259,14 +302,19 @@ def main():
     ap.add_argument("--out", default="site/data.js")
     args = ap.parse_args()
 
+    hm_real = topics_real = None
     if args.real_books or args.debug_books:
-        dates, L, laborTone, withhold = build_from_books(args.books_start, debug=args.debug_books)
+        dates, L, laborTone, withhold, hm_real, topics_real = build_from_books(args.books_start, debug=args.debug_books)
     elif args.demo:
         dates, L, laborTone, withhold = synthetic()
     else:
         dates, L, laborTone, withhold = build_real(args.start, args.end)
 
     hmVals, topics, feed = snapshot()
+    if hm_real:                                  # real per-district snap replaces the placeholder grid
+        hmVals = hm_real
+    if topics_real:                              # real topic-attention router replaces the placeholder
+        topics = topics_real
     cpi_yoy = fetch_cpi_yoy(dates)          # real BLS CPI-U YoY (None if no FRED key)
     last = dates[-1]
     next_release = last + dt.timedelta(days=round(365.25 / 8))  # ~next scheduled book
