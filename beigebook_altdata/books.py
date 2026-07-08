@@ -87,6 +87,7 @@ class Release:
     ym: str                       # YYYYMM slug
     landing_url: str
     district_urls: dict = field(default_factory=dict)   # {district: url}
+    old_base: str = ""            # non-empty => pre-2011 /fomc/BeigeBook/{YYYY}/{YYYYMMDD}/ scheme
 
 
 def release_index(start_year: int = 2011, end_year: int | None = None) -> list[Release]:
@@ -115,29 +116,54 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
                                                         else "/monetarypolicy/" + href)
                 year_pages.add(full)
 
-    # 2) each year page -> monthly release slugs (YYYYMM)
-    found: dict[str, str] = {}
+    # 2) each year page -> release links (two eras)
+    #      modern : beigebook{YYYYMM}(-summary)?.htm   (2011+, single landing w/ district nav)
+    #      old    : /fomc/BeigeBook/{YYYY}/{YYYYMMDD}/ (pre-2011, numbered district pages 1..12)
+    found: dict[str, str] = {}          # ym -> modern landing url
+    old: dict[str, str] = {}            # ym -> old dated base url
     for yp in sorted(year_pages):
         html = _get(yp)
         if not html:
             continue
         for a in BeautifulSoup(html, "lxml").find_all("a", href=True):
             href = a["href"]
-            # month links appear as beigebook{YYYYMM}-summary.htm (and sometimes bare)
+            full = href if href.startswith("http") else \
+                "https://www.federalreserve.gov" + (href if href.startswith("/")
+                                                    else "/monetarypolicy/" + href)
+            mo = re.search(r"/fomc/BeigeBook/(\d{4})/(\d{8})/", full)
+            if mo:
+                ymd = mo.group(2); ym = ymd[:6]
+                if start_year <= int(ym[:4]) <= end_year:
+                    old.setdefault(ym, f"https://www.federalreserve.gov/fomc/BeigeBook/{mo.group(1)}/{ymd}/")
+                continue
             m = re.search(r"beigebook(\d{6})(?:-summary)?\.htm", href)
             if m:
                 ym = m.group(1)
                 if start_year <= int(ym[:4]) <= end_year:
-                    full = href if href.startswith("http") else \
-                        "https://www.federalreserve.gov" + (href if href.startswith("/")
-                                                            else "/monetarypolicy/" + href)
                     found[ym] = full            # the summary page (carries the district nav)
 
-    releases = [Release(date=_ym_to_date(ym), ym=ym, landing_url=u)
-                for ym, u in sorted(found.items())]
+    releases = []
+    for ym in sorted(set(found) | set(old)):
+        if ym in found:                          # modern wins if a book exists in both
+            releases.append(Release(date=_ym_to_date(ym), ym=ym, landing_url=found[ym]))
+        else:
+            base = old[ym]
+            durls = {d: f"{base}{i}.htm" for i, d in enumerate(DISTRICTS, start=1)}
+            releases.append(Release(date=_ymd_from_base(base), ym=ym,
+                                    landing_url=base + "default.htm",
+                                    district_urls=durls, old_base=base))
+    releases.sort(key=lambda r: r.ym)
     print(f"release_index: {len(releases)} releases {start_year}-{end_year} "
-          f"(from {len(year_pages)} year pages)")
+          f"({len(found)} modern, {len(old)} pre-2011) from {len(year_pages)} year pages")
     return releases
+
+
+def _ymd_from_base(base: str) -> dt.date:
+    m = re.search(r"/(\d{8})/$", base)
+    if m:
+        s = m.group(1)
+        return dt.date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+    return dt.date(1996, 1, 1)
 
 
 def _ym_to_date(ym: str) -> dt.date:
@@ -242,14 +268,44 @@ def _route_section(name: str) -> set:
     return lenses
 
 
+_PRICE_KW = ("price", "prices", "pricing", "cost", "costs", "inflation", "inflationary")
+_LABOR_KW = ("wage", "wages", "employ", "employment", "hiring", "hire", "labor",
+             "jobs", "payroll", "workers", "staffing", "hires")
+
+
+def _sentences_with(text: str, keywords) -> str:
+    """Return the sentences of `text` that mention any keyword (theme extraction)."""
+    hits = [s for s in re.split(r"(?<=[.!?])\s+", text) if any(k in s.lower() for k in keywords)]
+    return " ".join(hits)
+
+
 def _lens_from_sections(sections: dict[str, str]) -> dict[str, float | None]:
-    """Score a page's sections into the four ladder lenses via keyword routing."""
-    buckets: dict[str, list[str]] = {"growth": [], "inflation": [], "labor": [], "bottlenecks": []}
+    """Score a page/district into the four ladder lenses.
+
+    growth      : sections about activity (Summary/Manufacturing/Consumer/Services)
+    inflation   : price sentences across ALL text (works when 'Prices' isn't its own section)
+    labor       : wage/employment sentences across ALL text (ditto for old-era books)
+    bottlenecks : manufacturing/supply sections
+    This sentence-level routing handles both the modern (header-organized) and pre-2011
+    (theme-embedded) layouts uniformly.
+    """
+    fulltext = " ".join(sections.values())
+    growth_txt, bott_txt = [], []
     for name, text in sections.items():
-        for lens in _route_section(name):
-            buckets[lens].append(text)
-    return {lens: (lexicon.diffusion(" ".join(txts)) if txts else None)
-            for lens, txts in buckets.items()}
+        r = _route_section(name)
+        if "growth" in r:
+            growth_txt.append(text)
+        if "bottlenecks" in r:
+            bott_txt.append(text)
+    g_src = " ".join(growth_txt) or fulltext
+    infl_src = _sentences_with(fulltext, _PRICE_KW)
+    labor_src = _sentences_with(fulltext, _LABOR_KW)
+    return {
+        "growth":      lexicon.diffusion(g_src) if g_src else None,
+        "inflation":   lexicon.diffusion(infl_src) if infl_src else None,
+        "labor":       lexicon.diffusion(labor_src) if labor_src else None,
+        "bottlenecks": lexicon.diffusion(" ".join(bott_txt)) if bott_txt else None,
+    }
 
 
 def _risk_uncertainty(sections: dict[str, str]) -> float | None:
@@ -263,34 +319,49 @@ def _risk_uncertainty(sections: dict[str, str]) -> float | None:
 
 def score_release(rel: Release) -> dict | None:
     """Fetch + parse + score one release -> per-book lens composites + breadth/dispersion."""
-    landing = _cached(f"bb_{rel.ym}.htm", rel.landing_url)
-    if not landing:
-        print(f"  {rel.ym}: no landing page")
-        return None
-    rel.date = _refine_date(landing, rel.ym)
-    links = _district_links(landing, rel.ym)
-
     per_district: dict[str, dict[str, float | None]] = {}
-    if len(links) >= 6:
-        # modern era: one page per district
-        for d, url in links.items():
+
+    if rel.old_base:
+        # pre-2011 era: numbered per-district pages 1.htm..12.htm (full 12-district scoring)
+        for d, url in rel.district_urls.items():
             html = _cached(f"bb_{rel.ym}_{_norm(d).replace(' ', '-')}.htm", url)
             if not html:
                 continue
             secs = parse_district_page(html)
+            if not secs:
+                continue
             vals = _lens_from_sections(secs)
             vals["risks"] = _risk_uncertainty(secs)
             per_district[d] = vals
-    else:
-        # pre-2024 era: the whole book is on the landing page (topic-organized).
-        # Score it as a single national observation.
-        secs = parse_district_page(landing)
-        if len(secs) < 2:
-            print(f"  {rel.ym}: single-page parse found {len(secs)} sections — skipped")
+        if len(per_district) < 6:
+            print(f"  {rel.ym}: pre-2011 got {len(per_district)} districts — skipped")
             return None
-        vals = _lens_from_sections(secs)
-        vals["risks"] = _risk_uncertainty(secs)
-        per_district["National"] = vals
+    else:
+        landing = _cached(f"bb_{rel.ym}.htm", rel.landing_url)
+        if not landing:
+            print(f"  {rel.ym}: no landing page")
+            return None
+        rel.date = _refine_date(landing, rel.ym)
+        links = _district_links(landing, rel.ym)
+        if len(links) >= 6:
+            # modern era: one page per district
+            for d, url in links.items():
+                html = _cached(f"bb_{rel.ym}_{_norm(d).replace(' ', '-')}.htm", url)
+                if not html:
+                    continue
+                secs = parse_district_page(html)
+                vals = _lens_from_sections(secs)
+                vals["risks"] = _risk_uncertainty(secs)
+                per_district[d] = vals
+        else:
+            # 2011-2023: whole book on the landing page (topic-organized) -> national obs
+            secs = parse_district_page(landing)
+            if len(secs) < 2:
+                print(f"  {rel.ym}: single-page parse found {len(secs)} sections — skipped")
+                return None
+            vals = _lens_from_sections(secs)
+            vals["risks"] = _risk_uncertainty(secs)
+            per_district["National"] = vals
 
     def agg(lens):
         xs = [v[lens] for v in per_district.values() if v.get(lens) is not None]
