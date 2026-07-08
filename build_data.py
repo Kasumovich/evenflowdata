@@ -19,7 +19,7 @@ try:
 except Exception:
     RULE_VERSION = "v1"   # fallback when the package isn't importable (e.g. demo-only runs)
 
-NBER_F = [(1973+10/12, 1975+2/12), (1980, 1980+6/12), (1981+6/12, 1982+10/12),
+NBER_F = [(1969+11/12, 1970+11/12), (1973+10/12, 1975+2/12), (1980, 1980+6/12), (1981+6/12, 1982+10/12),
           (1990+6/12, 1991+2/12), (2001+2/12, 2001+10/12), (2007+11/12, 2009+5/12),
           (2020+1/12, 2020+3/12)]
 
@@ -345,8 +345,8 @@ def main():
     ap.add_argument("--debug-books", action="store_true",
                     help="score only the latest 2 real books and print what parsed")
     ap.add_argument("--start", type=int, default=1970)
-    ap.add_argument("--books-start", type=int, default=1983,
-                    help="first year for real ingestion (>=1996 Fed archive; 1983-1995 Minneapolis Fed)")
+    ap.add_argument("--books-start", type=int, default=1970,
+                    help="first year for real ingestion (>=1996 Fed archive; 1970-1995 Minneapolis Fed)")
     ap.add_argument("--end", type=int, default=dt.date.today().year)
     ap.add_argument("--out", default="site/data.js")
     args = ap.parse_args()
