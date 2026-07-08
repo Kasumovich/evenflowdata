@@ -131,24 +131,30 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
                     if 2011 <= int(ym[:4]) <= end_year and int(ym[:4]) >= modern_lo:
                         found[ym] = _abs(a["href"])   # summary page (carries district nav)
 
-    # ---- pre-2011 era (<=2010): static FOMC per-year calendars ------------------
-    # The /monetarypolicy/ year tables hide release links behind javascript:void(0),
-    # but every old-era page links a static "{YYYY} calendar" at /fomc/beigebook/{YYYY}/
-    # that lists the year's /{YYYYMMDD}/ release folders (numbered district pages 1..12).
+    # ---- pre-2011 era (<=2010): parse the static "Related pages" release list -----
+    # Every Fed year-INDEX (both /monetarypolicy/beigebook{YYYY}.htm and the legacy
+    # /fomc/beigebook/{YYYY}/ directory) is a JS shell with no static release links.
+    # BUT every legacy stub page (beigebook{YYYYMM}.htm) carries a STATIC "Related
+    # pages" footer listing every release as "Beige Book - <Month DD, YYYY>" back to
+    # 1996-10-30. We read the date TEXT (not the href -- one 2002 href is mistyped),
+    # convert to /fomc/beigebook/{YYYY}/{YYYYMMDD}/, whose numbered district pages
+    # 1..12 are legacy-static. (Verified: "October 24, 2001" -> confirmed 20011024.)
     old_hi = min(end_year, 2010)
-    for y in range(start_year, old_hi + 1):
-        cal = _get(f"https://www.federalreserve.gov/fomc/beigebook/{y}/")  # trailing / required
-        if not cal:
-            print(f"  release_index: no FOMC calendar for {y}")
-            continue
-        n0 = len(old)
-        for a in BeautifulSoup(cal, "lxml").find_all("a", href=True):
-            mo = re.search(r"/fomc/beigebook/(\d{4})/(\d{8})/", a["href"], re.I)
-            if mo and int(mo.group(1)) == y:
-                ymd = mo.group(2); ym = ymd[:6]
-                old.setdefault(ym, f"https://www.federalreserve.gov/fomc/beigebook/{y}/{ymd}/")
-        if len(old) == n0:
-            print(f"  release_index: {y} calendar fetched but no release folders parsed")
+    if start_year <= 2010:
+        # any modern (2011+) stub carries the same full footer; the archive page is a
+        # fallback. One successful fetch yields the entire pre-2011 date list.
+        seeds = sorted(found.values())[:3] + [f"{FED}/beige-book-archive.htm"]
+        for su in seeds:
+            html = _get(su)
+            if not html:
+                continue
+            old = _old_from_footer(html, start_year, old_hi)
+            if old:
+                break
+        if not old:
+            print("  release_index: could not parse pre-2011 release list from any "
+                  f"footer source (tried {len(seeds)})")
+
 
     # ---- assemble --------------------------------------------------------------
     releases = []
@@ -163,7 +169,7 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
             releases.append(Release(date=_ym_to_date(ym), ym=ym, landing_url=found[ym]))
     releases.sort(key=lambda r: r.ym)
     print(f"release_index: {len(releases)} releases {start_year}-{end_year} "
-          f"({len(found)} modern >=2011, {len(old)} pre-2011 FOMC-calendar)")
+          f"({len(found)} modern >=2011, {len(old)} pre-2011 (release-list footer))")
     return releases
 
 
@@ -173,6 +179,37 @@ def _abs(href: str) -> str:
         return href
     return "https://www.federalreserve.gov" + (href if href.startswith("/")
                                                else "/monetarypolicy/" + href)
+
+
+_FOOTER_RE = re.compile(
+    r"Beige Book\s*[-\u2013\u2014]+\s*"
+    r"(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)\s+(\d{1,2}),\s*(\d{4})\s*$")
+
+
+def _old_from_footer(html: str, start_year: int, end_year: int) -> dict:
+    """Parse a legacy 'Related pages' footer into {ym: /fomc/ dated base url}.
+
+    Reads the anchor TEXT ('Beige Book - October 24, 2001'), never the href (one 2002
+    entry's href is mistyped). Keys by the date-derived YYYYMM and builds the /fomc/
+    release folder from the exact date. Filters to [start_year, end_year] (<=2010).
+    """
+    out: dict[str, str] = {}
+    for a in BeautifulSoup(html, "lxml").find_all("a"):
+        m = _FOOTER_RE.match(a.get_text(" ", strip=True))
+        if not m:
+            continue
+        try:
+            d = dt.datetime.strptime(f"{m.group(1)} {m.group(2)}, {m.group(3)}",
+                                     "%B %d, %Y").date()
+        except ValueError:
+            continue
+        if not (start_year <= d.year <= end_year):
+            continue
+        ymd = d.strftime("%Y%m%d")
+        out.setdefault(ymd[:6],
+                       f"https://www.federalreserve.gov/fomc/beigebook/{d.year}/{ymd}/")
+    return out
 
 
 def _ymd_from_base(base: str) -> dt.date:
