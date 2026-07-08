@@ -1,4 +1,4 @@
-  name: Update dashboard data
+name: Update dashboard data
 
 on:
   workflow_dispatch:
