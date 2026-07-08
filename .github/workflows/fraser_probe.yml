@@ -1,0 +1,20 @@
+name: FRASER probe
+
+# One-off diagnostic for the pre-1996 Beige Book backfill. Runs fraser_probe.py in CI
+# (which can reach fraser.stlouisfed.org). Trigger manually from the Actions tab.
+# Safe to delete after. Does not touch site/data.js.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pdfplumber
+      - name: Run FRASER probe
+        run: python -u fraser_probe.py
