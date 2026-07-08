@@ -28,7 +28,7 @@ except ImportError:
 
 from bs4 import BeautifulSoup
 
-from .config import DISTRICTS, LENS_SECTIONS
+from .config import DISTRICTS, LENS_SECTIONS, THEMES
 from . import lexicon
 
 FED = "https://www.federalreserve.gov/monetarypolicy"
@@ -364,6 +364,18 @@ def _route_section(name: str) -> set:
     return lenses
 
 
+# Topic-attention router: one compiled whole-word/phrase alternation per theme.
+_THEME_RE = {
+    name: re.compile(r"\b(?:" + "|".join(re.escape(t) for t in terms) + r")\b", re.I)
+    for name, terms in THEMES.items()
+}
+
+
+def _theme_counts(text: str) -> dict:
+    """Count theme-term hits over one book's full text (for the topic router)."""
+    return {name: len(rx.findall(text)) for name, rx in _THEME_RE.items()}
+
+
 _PRICE_KW = ("price", "prices", "pricing", "cost", "costs", "inflation", "inflationary")
 _LABOR_KW = ("wage", "wages", "employ", "employment", "hiring", "hire", "labor",
              "jobs", "payroll", "workers", "staffing", "hires")
@@ -416,6 +428,7 @@ def _risk_uncertainty(sections: dict[str, str]) -> float | None:
 def score_release(rel: Release) -> dict | None:
     """Fetch + parse + score one release -> per-book lens composites + breadth/dispersion."""
     per_district: dict[str, dict[str, float | None]] = {}
+    book_texts: list[str] = []          # full text, for the topic-attention router
 
     if rel.old_base:
         # pre-2011 era: numbered per-district pages 1.htm..12.htm (full 12-district scoring)
@@ -426,6 +439,7 @@ def score_release(rel: Release) -> dict | None:
             secs = parse_district_page(html)
             if not secs:
                 continue
+            book_texts.append(" ".join(secs.values()))
             vals = _lens_from_sections(secs)
             vals["risks"] = _risk_uncertainty(secs)
             per_district[d] = vals
@@ -446,6 +460,7 @@ def score_release(rel: Release) -> dict | None:
                 if not html:
                     continue
                 secs = parse_district_page(html)
+                book_texts.append(" ".join(secs.values()))
                 vals = _lens_from_sections(secs)
                 vals["risks"] = _risk_uncertainty(secs)
                 per_district[d] = vals
@@ -455,6 +470,7 @@ def score_release(rel: Release) -> dict | None:
             if len(secs) < 2:
                 print(f"  {rel.ym}: single-page parse found {len(secs)} sections — skipped")
                 return None
+            book_texts.append(" ".join(secs.values()))
             vals = _lens_from_sections(secs)
             vals["risks"] = _risk_uncertainty(secs)
             per_district["National"] = vals
@@ -469,6 +485,13 @@ def score_release(rel: Release) -> dict | None:
         return round(mean, 4), round(breadth, 4), round(disp, 4)
 
     rec = {"date": rel.date.isoformat(), "ndist": len(per_district)}
+    # Per-district cells for the "District x lens" heat-grid (real snap of this book).
+    # Column order matches the UI: [growth, inflation, labor, risks].
+    rec["cells"] = {d: [v.get("growth"), v.get("inflation"), v.get("labor"), v.get("risks")]
+                    for d, v in per_district.items()}
+    booktext = " ".join(book_texts)
+    rec["nwords"] = len(booktext.split())
+    rec["theme_counts"] = _theme_counts(booktext)   # topic-attention router
     for lens in ("growth", "inflation", "labor", "bottlenecks", "risks"):
         m, b, s = agg(lens)
         rec[lens] = m
