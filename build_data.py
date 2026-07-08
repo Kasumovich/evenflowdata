@@ -73,7 +73,7 @@ def fetch_cpi_yoy(dates):
     key = os.environ.get("FRED_API_KEY")
     if not key:
         print("FRED_API_KEY not set — real CPI skipped (using synthetic anchor).")
-        return None
+        return None, None
     try:
         import requests
         r = requests.get("https://api.stlouisfed.org/fred/series/observations",
@@ -85,7 +85,7 @@ def fetch_cpi_yoy(dates):
                      for o in r.json()["observations"] if o["value"] not in (".", ""))
     except Exception as e:
         print(f"CPI fetch failed ({e}) — using synthetic anchor.")
-        return None
+        return None, None
     by_ym = {(d.year, d.month): v for d, v in obs}
     yoy = [(d, (v / by_ym[(d.year-1, d.month)] - 1) * 100)
            for d, v in obs if (d.year-1, d.month) in by_ym]
@@ -95,7 +95,9 @@ def fetch_cpi_yoy(dates):
         avail = [y for dd, y in yoy if dd <= cutoff]
         out.append(round(avail[-1], 2) if avail else None)
     first = next((x for x in out if x is not None), 2.0)
-    return [first if x is None else x for x in out]    # backfill the earliest gap
+    aligned = [first if x is None else x for x in out]    # backfill the earliest gap
+    latest = round(yoy[-1][1], 2) if yoy else None        # most recent ACTUAL YoY = 'CPI now'
+    return aligned, latest
 
 
 def _fit_logit(X, y, iters=4000, lr=0.3, l2=0.02):
@@ -125,7 +127,7 @@ def _predict(model, x):
     return 1 / (1 + math.exp(-z))
 
 
-def probabilities(dates, L, laborTone, cpi_yoy=None):
+def probabilities(dates, L, laborTone, cpi_yoy=None, cpi_current=None):
     """Authoritative 12m logits (this becomes DATA.topline, which the dashboard displays).
 
     recession : growth level, growth momentum, risks, labor          vs NBER dates
@@ -151,7 +153,10 @@ def probabilities(dates, L, laborTone, cpi_yoy=None):
         yi.append(1 if fut > 2 else 0)
 
     li = N - 1
-    cpi_now = cpi[li]
+    # 'CPI now' = latest ACTUAL YoY (what's known today), not the book's lagged point-in-time
+    # value. Training above still uses the point-in-time series (no look-ahead); only the
+    # live anchor/display uses the current reading.
+    cpi_now = cpi_current if cpi_current is not None else cpi[li]
     g, gprev = L["growth"][-1], L["growth"][-2] if N > 1 else L["growth"][-1]
     mom = g - gprev
     regime = ("Rising expansion" if mom >= 0 else "Slowing expansion") if g >= 0 \
@@ -359,7 +364,7 @@ def main():
         hmVals = extras["hm_real"]
     if extras.get("topics_real"):                # real topic-attention router replaces the placeholder
         topics = extras["topics_real"]
-    cpi_yoy = fetch_cpi_yoy(dates)          # real BLS CPI-U YoY (None if no FRED key)
+    cpi_yoy, cpi_now_real = fetch_cpi_yoy(dates)   # aligned point-in-time series, latest actual YoY
     last = dates[-1]
     next_release = last + dt.timedelta(days=round(365.25 / 8))  # ~next scheduled book
     payload = {
@@ -372,10 +377,11 @@ def main():
         "hmVals": hmVals, "topics": topics, "feed": feed,
         "lensAgg": extras.get("lens_agg"),      # median/trim alt series for the chart toggle
         "cellsHist": extras.get("cells_hist"),  # per-district history (stable regional store)
-        "topline": probabilities(dates, L, laborTone, cpi_yoy),
+        "topline": probabilities(dates, L, laborTone, cpi_yoy, cpi_now_real),
     }
     if cpi_yoy:
-        payload["cpiYoY"] = cpi_yoy         # real anchor for the dashboard's in-browser model
+        payload["cpiYoY"] = cpi_yoy         # point-in-time series for the in-browser model
+        payload["cpiNow"] = cpi_now_real    # latest ACTUAL CPI YoY — what 'CPI now' should read
     src = "real-books" if (args.real_books or args.debug_books) else ("synthetic" if args.demo else "pipeline")
     payload["lens_source"] = src
     with open(args.out, "w") as fh:
