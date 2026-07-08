@@ -157,6 +157,19 @@
     <p class="read" id="read1">showing 1970 – 2026 · 440 books · potential range ±2</p>
   </div>
 
+  <div class="card">
+    <div class="phead">
+      <div>
+        <p class="panel-title">Four-lens history — smoothed benchmark</p>
+        <p class="panel-note">two-sided moving average · uses hindsight, so NOT point-in-time · smooths book-to-book noise to reveal the cycle · grey bands = NBER recessions</p>
+      </div>
+      <div class="ctrls"><span class="hint">click a lens to toggle</span><button id="reset3">reset</button></div>
+    </div>
+    <div class="lgnd" id="lgndS"></div>
+    <div class="chart-wrap"><canvas id="lensSmooth" role="img" aria-label="Smoothed two-sided moving average of the four lens composites, 1970 to 2026, shown as a hindsight benchmark (not point-in-time)."></canvas></div>
+    <p class="read" id="read3">showing 1970 – 2026 · smoothed benchmark (hindsight)</p>
+  </div>
+
   <div class="row2">
     <div class="card" style="margin:0">
       <p class="panel-title">District × lens — latest book</p>
@@ -538,10 +551,34 @@
       plugins:{legend:{display:false},tooltip:{callbacks:{title:function(it){return labelFine(it[0].parsed.x);}}},zoom:zoomCfg(document.getElementById("read2"))}},
     plugins:[recBands()]
   });
+  // clip this panel to the OVERLAPPING period: withholding (hard series) starts 1998
+  var whStart=0; for(var _wi=0;_wi<withhold.length;_wi++){if(withhold[_wi]!=null){whStart=_wi;break;}}
+  var whYear=String(new Date(dates[whStart]).getFullYear());
+  laborChart.options.scales.x.min=whStart; laborChart.update();
+  var _r2=document.getElementById("read2"); if(_r2)_r2.textContent="showing "+whYear+" \u2013 2026 \u00B7 overlapping period";
 
-  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · potential range \u00B12":"");}
+  function resetChart(c,el,lo,hi,minX){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=minX||0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · potential range \u00B12":"");}
   document.getElementById("reset1").addEventListener("click",function(){resetChart(lensChart,document.getElementById("read1"),"1970","2026");});
-  document.getElementById("reset2").addEventListener("click",function(){resetChart(laborChart,document.getElementById("read2"),"1970","2026");});
+  document.getElementById("reset2").addEventListener("click",function(){resetChart(laborChart,document.getElementById("read2"),whYear,"2026",whStart);});
+
+  // --- smoothed benchmark: two-sided moving average (uses hindsight -> NOT point-in-time) ---
+  function smooth(arr,half){return arr.map(function(_,i){var s=0,n=0,lo=Math.max(0,i-half),hi=Math.min(arr.length-1,i+half);for(var j=lo;j<=hi;j++){if(arr[j]!=null){s+=arr[j];n++;}}return n?round(s/n):null;});}
+  var SMH=7;   // half-window in books (~1.5-2yr each side); wider = smoother
+  var lensSmooth=new Chart(document.getElementById("lensSmooth"),{
+    type:"line",
+    data:{datasets:series.map(function(sr){return {label:sr.label,data:smooth(lens[sr.key],SMH).map(function(y,i){return {x:i,y:y};}),parsing:false,borderColor:sr.color,borderWidth:2,pointRadius:0,tension:0.4};})},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
+      scales:{x:{type:"linear",min:0,max:N-1,ticks:{callback:tickCb,maxTicksLimit:10,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{display:false}},
+        y:{min:-2,max:2,title:{display:true,text:"diffusion (smoothed)",color:"#8A929E",font:{size:10}},ticks:{stepSize:1,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{color:"rgba(22,26,33,.07)"}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:function(it){return labelFine(it[0].parsed.x);}}},zoom:zoomCfg(document.getElementById("read3"))}},
+    plugins:[recBands()]
+  });
+  var DEFHID_S={2:true,3:true};   // Labor & Risks hidden by default, click to reveal
+  document.getElementById("lgndS").innerHTML=series.map(function(sr,i){return '<span class="chip'+(DEFHID_S[i]?" off":"")+'" data-i="'+i+'"><i style="background:'+sr.color+'"></i>'+sr.label+'</span>';}).join("");
+  series.forEach(function(sr,i){if(DEFHID_S[i])lensSmooth.getDatasetMeta(i).hidden=true;});
+  lensSmooth.update();
+  document.querySelectorAll("#lgndS .chip").forEach(function(ch){ch.addEventListener("click",function(){var i=+ch.dataset.i;var meta=lensSmooth.getDatasetMeta(i);meta.hidden=!meta.hidden;ch.classList.toggle("off",meta.hidden);lensSmooth.update();});});
+  document.getElementById("reset3").addEventListener("click",function(){resetChart(lensSmooth,document.getElementById("read3"),"1970","2026");});
 
   // ---- as-of stamp + CSV export ----
   (function(){
