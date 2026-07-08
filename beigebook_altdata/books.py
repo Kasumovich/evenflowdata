@@ -507,8 +507,10 @@ def score_release(rel: Release) -> dict | None:
         else:
             # 2011-2023: whole book on the landing page (topic-organized) -> national obs
             secs = parse_district_page(landing)
-            if len(secs) < 2:
-                print(f"  {rel.ym}: single-page parse found {len(secs)} sections — skipped")
+            chars = sum(len(v) for v in secs.values())
+            if chars < 500:      # gate on real content, not section count: 1970s Redbook
+                print(f"  {rel.ym}: single-page parse found {chars} chars / "
+                      f"{len(secs)} sections — skipped")
                 return None
             book_texts.append(" ".join(secs.values()))
             vals = _lens_from_sections(secs)
