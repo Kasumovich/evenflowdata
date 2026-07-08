@@ -397,7 +397,7 @@
     var sr=stdz(Xr), si=stdz(Xi);
     var mr=fit(sr.Z,yr), mi=fit(si.Z,yi);
     var li=N-1;
-    var cpiLatest=(DATA&&DATA.cpiYoY)?cpiSeries[li]:CPI_NOW; // real anchor at the live point
+    var cpiLatest=(DATA&&DATA.cpiNow!=null)?DATA.cpiNow:((DATA&&DATA.cpiYoY)?cpiSeries[li]:CPI_NOW); // latest ACTUAL CPI at the live point
     var xr=[lens.growth[li], lens.growth[li]-lens.growth[li-1], lens.risks[li], laborTone[li]];
     var xi=[cpiLatest, lens.inflation[li], lens.inflation[li]-lens.inflation[li-1], laborTone[li], lens.bottlenecks[li]];
     var pRec=Math.round(predict(mr,xr,sr)*100), pInf=Math.round(predict(mi,xi,si)*100);
