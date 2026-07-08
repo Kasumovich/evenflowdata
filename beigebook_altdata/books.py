@@ -536,3 +536,26 @@ def score_release(rel: Release) -> dict | None:
         rec[lens] = m
         rec[f"{lens}_breadth"] = b
         rec[f"{lens}_disp"] = s
+    return rec
+
+
+# --------------------------------------------------------------------------- driver
+def build_books(start_year: int = 2011, debug: bool = False) -> list[dict]:
+    """Full 2011-present real ingestion. debug=True does only the latest 2 releases
+    and prints what parsed, so you can validate before a full backfill."""
+    rels = release_index(start_year)
+    if debug:
+        rels = rels[-2:]
+        print(f"DEBUG: scoring last {len(rels)} releases only")
+    books = []
+    for rel in rels:
+        rec = score_release(rel)
+        if rec:
+            books.append(rec)
+            if debug:
+                print(f"  {rec['date']} districts={rec['ndist']} "
+                      f"growth={rec['growth']} inflation={rec['inflation']} "
+                      f"labor={rec['labor']} risks={rec['risks']}")
+    books.sort(key=lambda r: r["date"])
+    print(f"build_books: scored {len(books)} real books")
+    return books  
