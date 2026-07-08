@@ -1,4 +1,4 @@
-name: Update dashboard data
+  name: Update dashboard data
 
 on:
   workflow_dispatch:
@@ -25,11 +25,17 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
 
+      # Rotating key: a static key freezes the FIRST cache ever saved and never
+      # updates, so a small early run pinned an ~88KB cache and the full corpus
+      # was re-downloaded every run. Unique key per run => always saves a fresh,
+      # complete cache; restore-keys prefix => next run restores the most recent.
       - name: Cache Beige Book corpus
         uses: actions/cache@v4
         with:
           path: ~/.bb_cache
-          key: bb-cache-v2
+          key: bb-cache-${{ github.run_id }}
+          restore-keys: |
+            bb-cache-
 
       - name: Build data
         env:
