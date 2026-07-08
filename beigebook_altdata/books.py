@@ -244,17 +244,12 @@ def _lens_from_sections(sections: dict[str, str]) -> dict[str, float | None]:
 
 
 def _risk_uncertainty(sections: dict[str, str]) -> float | None:
-    """Risk lens = uncertainty density across all of a district's text (LM)."""
+    """Risk lens = density of uncertainty/risk words across all of a district's text.
+    (uncertain, uncertainty, risk, cautious, concern, volatile, tariff, disruption, ...)"""
     alltext = " ".join(sections.values())
     if not alltext:
         return None
-    t = lexicon.tone(alltext)
-    u = t.get("uncertainty")
-    if u is None:
-        return None
-    # map an uncertainty share (~0-0.05 typical) onto the -2..+2 axis as a risk level:
-    # more hedging => higher risk. Scaled so ~5% uncertainty ~ +1.5 risk.
-    return round(min(u * 30.0, 2.0), 4)
+    return lexicon.risk_density(alltext)
 
 
 def score_release(rel: Release) -> dict | None:
