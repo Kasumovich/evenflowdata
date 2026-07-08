@@ -32,6 +32,7 @@ from .config import DISTRICTS, LENS_SECTIONS, THEMES
 from . import lexicon
 
 FED = "https://www.federalreserve.gov/monetarypolicy"
+MINN = "https://www.minneapolisfed.org"     # pre-1996 archive (server-rendered summaries)
 CACHE = os.environ.get("BB_CACHE", os.path.expanduser("~/.bb_cache"))
 HEADERS = {"User-Agent": "beigebook-altdata/1.0 (research; contact via evenflowdata.com)"}
 PAUSE = float(os.environ.get("BB_PAUSE", "0.7"))   # politeness delay between fetches
@@ -181,10 +182,31 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
                   f"footer source (tried {len(seeds)})")
 
 
+    # ---- pre-1996 era (<=1995): Minneapolis Fed national summaries --------------
+    # The Board site's Beige Books bottom out at 1996-10. Earlier issues live at the
+    # Minneapolis Fed as SERVER-RENDERED national summaries (clean text, no JS/OCR):
+    #   /beige-book-reports/{YYYY}/{YYYY-MM}-su
+    # We probe each month and score the summary as a single national document (like
+    # the 2011-2023 single-page era). District pages (-bo, -ny, ... -sf) exist too but
+    # aren't needed for the national score. Beige Book era is 1983+ (earlier 404s).
+    minn: dict[str, str] = {}
+    for y in range(start_year, min(end_year, 1995) + 1):
+        n0 = len(minn)
+        for mm in range(1, 13):
+            url = f"{MINN}/beige-book-reports/{y}/{y}-{mm:02d}-su"
+            h = _cached(f"minn_{y}{mm:02d}.htm", url)
+            if h and "National Summary" in h:        # real summary (not a soft-404 shell)
+                minn[f"{y}{mm:02d}"] = url
+        got = len(minn) - n0
+        if start_year <= 1995 and got == 0 and y >= 1983:
+            print(f"  release_index: {y} — no Minneapolis summaries resolved")
+
     # ---- assemble --------------------------------------------------------------
     releases = []
-    for ym in sorted(set(found) | set(old)):
-        if int(ym[:4]) <= 2010 and ym in old:    # old-era wins for <=2010
+    for ym in sorted(set(found) | set(old) | set(minn)):
+        if int(ym[:4]) <= 1995 and ym in minn:       # Minneapolis national summary
+            releases.append(Release(date=_ym_to_date(ym), ym=ym, landing_url=minn[ym]))
+        elif int(ym[:4]) <= 2010 and ym in old:      # old-era /fomc/ wins for 1996-2010
             base = old[ym]
             durls = {d: f"{base}{i}.htm" for i, d in enumerate(DISTRICTS, start=1)}
             releases.append(Release(date=_ymd_from_base(base), ym=ym,
@@ -194,7 +216,8 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
             releases.append(Release(date=_ym_to_date(ym), ym=ym, landing_url=found[ym]))
     releases.sort(key=lambda r: r.ym)
     print(f"release_index: {len(releases)} releases {start_year}-{end_year} "
-          f"({len(found)} modern >=2011, {len(old)} pre-2011 (release-list footer))")
+          f"({len(found)} modern >=2011, {len(old)} pre-2011 (release-list footer), "
+          f"{len(minn)} pre-1996 (Minneapolis))")
     return releases
 
 
@@ -513,26 +536,3 @@ def score_release(rel: Release) -> dict | None:
         rec[lens] = m
         rec[f"{lens}_breadth"] = b
         rec[f"{lens}_disp"] = s
-    return rec
-
-
-# --------------------------------------------------------------------------- driver
-def build_books(start_year: int = 2011, debug: bool = False) -> list[dict]:
-    """Full 2011-present real ingestion. debug=True does only the latest 2 releases
-    and prints what parsed, so you can validate before a full backfill."""
-    rels = release_index(start_year)
-    if debug:
-        rels = rels[-2:]
-        print(f"DEBUG: scoring last {len(rels)} releases only")
-    books = []
-    for rel in rels:
-        rec = score_release(rel)
-        if rec:
-            books.append(rec)
-            if debug:
-                print(f"  {rec['date']} districts={rec['ndist']} "
-                      f"growth={rec['growth']} inflation={rec['inflation']} "
-                      f"labor={rec['labor']} risks={rec['risks']}")
-    books.sort(key=lambda r: r["date"])
-    print(f"build_books: scored {len(books)} real books")
-    return books
