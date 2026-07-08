@@ -140,7 +140,7 @@
   </div>
 
   <div class="grid4" id="tiles"></div>
-  <p class="read" style="margin:6px 2px 0">each lens on a range of ±2 · −2 collapse … 0 flat … +2 robust</p>
+  <p class="read" style="margin:6px 2px 0">each lens on a potential range of ±2 · −2 collapse … 0 flat … +2 robust</p>
 
   <div class="card">
     <div class="phead">
@@ -148,13 +148,13 @@
         <p class="panel-title">Four-lens history</p>
         <p class="panel-note">raw diffusion score by book · cross-district: mean / median / trimmed · grey bands = NBER recessions · scroll / drag to zoom</p>
       </div>
-      <div class="ctrls"><span class="seg" id="aggSeg" title="cross-district aggregation"><button class="on" data-m="mean">mean</button><button data-m="median">median</button><button data-m="trim">trimmed</button></span><span class="hint">click a lens to toggle</span><button id="reset1">reset</button></div>
+      <div class="ctrls"><span class="hint">click a lens to toggle</span><button id="reset1">reset</button></div>
     </div>
     <div class="lgnd" id="lgnd"></div>
     <div class="chart-wrap"><canvas id="lensChart" role="img"
       aria-label="Zoomable time series of four Beige Book lens composites — growth, inflation, labor and risks — from 1970 to 2026, with NBER recession periods shaded.">
       Growth and risk composites move opposite each other and dip during recessions; inflation peaks in the 1970s-80s and again in the early 2020s.</canvas></div>
-    <p class="read" id="read1">showing 1970 – 2026 · 440 books · range ±2</p>
+    <p class="read" id="read1">showing 1970 – 2026 · 440 books · potential range ±2</p>
   </div>
 
   <div class="row2">
@@ -328,7 +328,7 @@
     var y0=dates[0].getFullYear(), y1=dates[N-1].getFullYear(), rng=y0+"\u2013"+y1;
     var h1=document.querySelector("h1"); if(h1) h1.textContent="Corporate-guidance screen \u00B7 "+rng;
     var sub=document.querySelector(".sub"); if(sub) sub.textContent="~"+N+" books \u00B7 4 lenses \u00B7 withholding overlay from 1998 \u00B7 never revised";
-    var r1=document.getElementById("read1"); if(r1) r1.textContent="showing "+y0+" \u2013 "+y1+" \u00B7 "+N+" books \u00B7 range \u00B12";
+    var r1=document.getElementById("read1"); if(r1) r1.textContent="showing "+y0+" \u2013 "+y1+" \u00B7 "+N+" books \u00B7 potential range \u00B12";
     var r2=document.getElementById("read2"); if(r2) r2.textContent="showing "+y0+" \u2013 "+y1;
     if(typeof document!=="undefined") document.title="Beige Book alt-data screen \u2014 "+rng;
   })();
@@ -477,7 +477,7 @@
     limits:{x:{min:0,max:N-1,minRange:8}}
   };}
   function upd(c,el){var mn=c.scales.x.min,mx=c.scales.x.max;
-    el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx)+(el.id==="read1"?" · range \u00B12":"");}
+    el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx)+(el.id==="read1"?" · potential range \u00B12":"");}
 
   // --- four-lens history chart ---
   var lensAgg=(DATA&&DATA.lensAgg)||null;   // {lens:{median:[],trim:[]}} or null (demo/synthetic)
@@ -539,7 +539,7 @@
     plugins:[recBands()]
   });
 
-  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · range \u00B12":"");}
+  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · potential range \u00B12":"");}
   document.getElementById("reset1").addEventListener("click",function(){resetChart(lensChart,document.getElementById("read1"),"1970","2026");});
   document.getElementById("reset2").addEventListener("click",function(){resetChart(laborChart,document.getElementById("read2"),"1970","2026");});
 
