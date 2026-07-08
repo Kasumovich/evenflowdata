@@ -345,8 +345,8 @@ def main():
     ap.add_argument("--debug-books", action="store_true",
                     help="score only the latest 2 real books and print what parsed")
     ap.add_argument("--start", type=int, default=1970)
-    ap.add_argument("--books-start", type=int, default=1996,
-                    help="first year for real ingestion (1996 = Fed HTML archive floor; pre-1996 needs FRASER OCR)")
+    ap.add_argument("--books-start", type=int, default=1983,
+                    help="first year for real ingestion (>=1996 Fed archive; 1983-1995 Minneapolis Fed)")
     ap.add_argument("--end", type=int, default=dt.date.today().year)
     ap.add_argument("--out", default="site/data.js")
     args = ap.parse_args()
