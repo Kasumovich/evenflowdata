@@ -38,6 +38,10 @@
   .hint{font-family:var(--mono);font-size:11px;color:var(--faint)}
   button{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--surface);border:1px solid var(--line2);border-radius:7px;padding:6px 12px;cursor:pointer}
   button:hover{background:#F0F1F4}button:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;margin-right:8px}
+  .seg button{border:none;border-right:1px solid var(--line2);border-radius:0;padding:6px 9px;font-size:11px}
+  .seg button:last-child{border-right:none}
+  .seg button.on{background:var(--indigo);color:#fff}
   .lgnd{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
   .chip{font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:7px;padding:4px 9px;cursor:pointer;user-select:none}
   .chip.off{opacity:.4}
@@ -142,9 +146,9 @@
     <div class="phead">
       <div>
         <p class="panel-title">Four-lens history</p>
-        <p class="panel-note">raw diffusion score by book (adjective ladder over Beige Book text) · grey bands = NBER recessions · scroll / drag to zoom</p>
+        <p class="panel-note">raw diffusion score by book · cross-district: mean / median / trimmed · grey bands = NBER recessions · scroll / drag to zoom</p>
       </div>
-      <div class="ctrls"><span class="hint">click a lens to toggle</span><button id="reset1">reset</button></div>
+      <div class="ctrls"><span class="seg" id="aggSeg" title="cross-district aggregation"><button class="on" data-m="mean">mean</button><button data-m="median">median</button><button data-m="trim">trimmed</button></span><span class="hint">click a lens to toggle</span><button id="reset1">reset</button></div>
     </div>
     <div class="lgnd" id="lgnd"></div>
     <div class="chart-wrap"><canvas id="lensChart" role="img"
@@ -476,6 +480,12 @@
     el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx)+(el.id==="read1"?" · range \u00B12":"");}
 
   // --- four-lens history chart ---
+  var lensAgg=(DATA&&DATA.lensAgg)||null;   // {lens:{median:[],trim:[]}} or null (demo/synthetic)
+  var aggMode="mean";
+  function seriesData(key,mode){
+    if(mode!=="mean" && lensAgg && lensAgg[key] && lensAgg[key][mode]) return lensAgg[key][mode];
+    return lens[key];   // mean is the canonical series used everywhere else
+  }
   var series=[
     {key:"growth",label:"Growth",color:"#0F6E56"},
     {key:"inflation",label:"Inflation",color:"#E6B400"},
@@ -484,7 +494,7 @@
   ];
   var lensChart=new Chart(document.getElementById("lensChart"),{
     type:"line",
-    data:{datasets:series.map(function(s){return {label:s.label,data:lens[s.key].map(function(y,i){return {x:i,y:y};}),
+    data:{datasets:series.map(function(s){return {label:s.label,data:seriesData(s.key,aggMode).map(function(y,i){return {x:i,y:y};}),
       parsing:false,borderColor:s.color,borderWidth:1.4,pointRadius:0,tension:0.2};})},
     options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
       scales:{x:{type:"linear",min:0,max:N-1,ticks:{callback:tickCb,maxTicksLimit:10,color:"#8A929E",font:{family:"ui-monospace,monospace",size:10}},grid:{display:false}},
@@ -502,6 +512,17 @@
   document.querySelectorAll("#lgnd .chip").forEach(function(ch){
     ch.addEventListener("click",function(){var i=+ch.dataset.i;var meta=lensChart.getDatasetMeta(i);
       meta.hidden=!meta.hidden;ch.classList.toggle("off",meta.hidden);lensChart.update();});});
+
+  // cross-district aggregation toggle (mean / median / trimmed) — all frozen/unrevised
+  (function(){var seg=document.getElementById("aggSeg"); if(!seg) return;
+    if(!lensAgg){seg.style.display="none"; return;}   // no alt series (demo/synthetic)
+    seg.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){
+      aggMode=b.dataset.m;
+      seg.querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b);});
+      series.forEach(function(s,i){lensChart.data.datasets[i].data=
+        seriesData(s.key,aggMode).map(function(y,idx){return {x:idx,y:y};});});
+      lensChart.update();
+    });});})();
 
   // --- labor + withholding chart ---
   var laborChart=new Chart(document.getElementById("laborChart"),{
@@ -547,24 +568,3 @@
       }
     }
     function csv(){
-      var head=["release_date","growth","inflation","bottlenecks","risks","labor_tone","withholding_yoy_pct"];
-      var lines=[head.join(",")];
-      for(var i=0;i<N;i++){
-        lines.push([dates[i].toISOString().slice(0,10),
-          lens.growth[i], lens.inflation[i], lens.bottlenecks[i], lens.risks[i],
-          (laborTone[i]==null?"":laborTone[i]),
-          (withhold[i]==null?"":withhold[i])].join(","));
-      }
-      return lines.join("\n");
-    }
-    document.getElementById("dlCsv").addEventListener("click",function(){
-      var blob=new Blob([csv()],{type:"text/csv;charset=utf-8"});
-      var url=URL.createObjectURL(blob), a=document.createElement("a");
-      a.href=url; a.download="beigebook_panel_"+asof+".csv"; document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-    });
-  })();
-})();
-</script>
-</body>
-</html>
