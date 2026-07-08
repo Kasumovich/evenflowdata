@@ -39,6 +39,14 @@ PAUSE = float(os.environ.get("BB_PAUSE", "0.7"))   # politeness delay between fe
 _norm = lambda s: re.sub(r"[^a-z ]", "", s.lower()).strip()
 _DISTRICT_KEYS = {_norm(d): d for d in DISTRICTS}
 
+# Legacy breadcrumb crumbs to skip in parse_district_page (old-era pages lack <nav>).
+_DATE_CRUMB = re.compile(
+    r"(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)\s+\d{1,2},?\s+\d{4}")
+_ORD_DISTRICT = re.compile(
+    r"(First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|"
+    r"Eleventh|Twelfth)\s+District", re.I)
+
 # Canonical section headers we rely on (consistent across districts).
 _CANON = {
     "summary of economic activity": "Summary of Economic Activity",
@@ -130,6 +138,23 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
                     # beigebook{YYYYMM}.htm shells but are JS-gated -> must NOT land here.
                     if 2011 <= int(ym[:4]) <= end_year and int(ym[:4]) >= modern_lo:
                         found[ym] = _abs(a["href"])   # summary page (carries district nav)
+
+        # The static year-page / "Related pages" link lists are baked at deploy time
+        # and LAG the live site, so the newest books (all of the current year, and
+        # sometimes the last book of the prior year) are absent from them -> the
+        # dashboard goes stale. Probe recent month landings directly. A real book's
+        # National Summary lists its own per-district pages (beigebook{ym}-boston.htm
+        # ...); a 404/soft-shell does not -> that's the existence test.
+        recent = [f"{end_year}{mm:02d}" for mm in range(1, 13)]
+        if end_year - 1 >= modern_lo:
+            recent += [f"{end_year-1}{mm:02d}" for mm in (9, 10, 11, 12)]
+        for ym in recent:
+            if ym in found:
+                continue
+            url = f"{FED}/beigebook{ym}-summary.htm"
+            html = _get(url)
+            if html and f"beigebook{ym}-boston.htm" in html:
+                found[ym] = url
 
     # ---- pre-2011 era (<=2010): parse the static "Related pages" release list -----
     # Every Fed year-INDEX (both /monetarypolicy/beigebook{YYYY}.htm and the legacy
@@ -300,6 +325,16 @@ def parse_district_page(html: str) -> dict[str, str]:
                    "accessibility") or re.fullmatch(r"\d{4} calendar", low):
             break
         if el.name in ("h2", "h3", "h4", "h5", "h6", "strong", "b") and len(txt) < 70:
+            # Old-era table-layout pages have no semantic <nav>, so the top breadcrumb
+            # (date · "Federal Reserve Districts" · "First District - Boston" · bare city)
+            # leaks in as bold "headers". Skip those so they don't create junk sections
+            # or capture the district's intro paragraph -- letting it stay under the
+            # growth-routed default section instead of an inert city-name bucket.
+            if ("federal reserve district" in low
+                    or _DATE_CRUMB.search(txt)
+                    or _norm(txt) in _DISTRICT_KEYS
+                    or _ORD_DISTRICT.match(txt)):
+                continue
             canon = _CANON.get(_norm(txt))
             sections.setdefault(canon or txt.strip(), [])
             cur = canon or txt.strip()
