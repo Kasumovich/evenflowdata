@@ -98,64 +98,81 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
     pages, then harvest the monthly release links. No filename guessing.
     """
     end_year = end_year or dt.date.today().year
-    # 1) year pages. Two schemes across eras:
-    #      2017+ :  /monetarypolicy/beigebook{YYYY}.htm
-    #      1996-2016 : /monetarypolicy/beigebook/beigebook{YYYY}.htm  (extra /beigebook/ folder)
-    year_pages = set()
-    for y in range(start_year, end_year + 1):
-        year_pages.add(f"{FED}/beigebook{y}.htm")
-        year_pages.add(f"{FED}/beigebook/beigebook{y}.htm")
-    idx = _get(f"{FED}/beige-book-archive.htm")
-    if idx:
-        for a in BeautifulSoup(idx, "lxml").find_all("a", href=True):
-            m = re.search(r"beigebook(\d{4})\.htm$", a["href"])
-            if m and start_year <= int(m.group(1)) <= end_year:
-                href = a["href"]
-                full = href if href.startswith("http") else \
-                    "https://www.federalreserve.gov" + (href if href.startswith("/")
-                                                        else "/monetarypolicy/" + href)
-                year_pages.add(full)
+    found: dict[str, str] = {}          # ym -> modern landing url  (2011+)
+    old: dict[str, str] = {}            # ym -> old dated base url   (<=2010)
 
-    # 2) each year page -> release links (two eras)
-    #      modern : beigebook{YYYYMM}(-summary)?.htm   (2011+, single landing w/ district nav)
-    #      old    : /fomc/BeigeBook/{YYYY}/{YYYYMMDD}/ (pre-2011, numbered district pages 1..12)
-    found: dict[str, str] = {}          # ym -> modern landing url
-    old: dict[str, str] = {}            # ym -> old dated base url
-    for yp in sorted(year_pages):
-        html = _get(yp)
-        if not html:
-            continue
-        for a in BeautifulSoup(html, "lxml").find_all("a", href=True):
-            href = a["href"]
-            full = href if href.startswith("http") else \
-                "https://www.federalreserve.gov" + (href if href.startswith("/")
-                                                    else "/monetarypolicy/" + href)
-            mo = re.search(r"/fomc/BeigeBook/(\d{4})/(\d{8})/", full)
-            if mo:
-                ymd = mo.group(2); ym = ymd[:6]
-                if start_year <= int(ym[:4]) <= end_year:
-                    old.setdefault(ym, f"https://www.federalreserve.gov/fomc/BeigeBook/{mo.group(1)}/{ymd}/")
+    # ---- modern era (>=2011): Board archive -----------------------------------
+    # year pages -> per-MONTH landing links (beigebook{YYYYMM}(-summary)?.htm).
+    # Two year-page schemes across the 2017 redesign:
+    #   2017+     : /monetarypolicy/beigebook{YYYY}.htm
+    #   2011-2016 : /monetarypolicy/beigebook/beigebook{YYYY}.htm  (extra /beigebook/)
+    modern_lo = max(start_year, 2011)
+    if modern_lo <= end_year:
+        year_pages = set()
+        for y in range(modern_lo, end_year + 1):
+            year_pages.add(f"{FED}/beigebook{y}.htm")
+            year_pages.add(f"{FED}/beigebook/beigebook{y}.htm")
+        idx = _get(f"{FED}/beige-book-archive.htm")
+        if idx:
+            for a in BeautifulSoup(idx, "lxml").find_all("a", href=True):
+                m = re.search(r"beigebook(\d{4})\.htm$", a["href"])
+                if m and modern_lo <= int(m.group(1)) <= end_year:
+                    year_pages.add(_abs(a["href"]))
+        for yp in sorted(year_pages):
+            html = _get(yp)
+            if not html:
                 continue
-            m = re.search(r"beigebook(\d{6})(?:-summary)?\.htm", href)
-            if m:
-                ym = m.group(1)
-                if start_year <= int(ym[:4]) <= end_year:
-                    found[ym] = full            # the summary page (carries the district nav)
+            for a in BeautifulSoup(html, "lxml").find_all("a", href=True):
+                m = re.search(r"beigebook(\d{6})(?:-summary)?\.htm", a["href"])
+                if m:
+                    ym = m.group(1)
+                    # fence to >=2011: pre-2011 'Related pages' links appear as static
+                    # beigebook{YYYYMM}.htm shells but are JS-gated -> must NOT land here.
+                    if 2011 <= int(ym[:4]) <= end_year and int(ym[:4]) >= modern_lo:
+                        found[ym] = _abs(a["href"])   # summary page (carries district nav)
 
+    # ---- pre-2011 era (<=2010): static FOMC per-year calendars ------------------
+    # The /monetarypolicy/ year tables hide release links behind javascript:void(0),
+    # but every old-era page links a static "{YYYY} calendar" at /fomc/beigebook/{YYYY}/
+    # that lists the year's /{YYYYMMDD}/ release folders (numbered district pages 1..12).
+    old_hi = min(end_year, 2010)
+    for y in range(start_year, old_hi + 1):
+        cal = _get(f"https://www.federalreserve.gov/fomc/beigebook/{y}/")  # trailing / required
+        if not cal:
+            print(f"  release_index: no FOMC calendar for {y}")
+            continue
+        n0 = len(old)
+        for a in BeautifulSoup(cal, "lxml").find_all("a", href=True):
+            mo = re.search(r"/fomc/beigebook/(\d{4})/(\d{8})/", a["href"], re.I)
+            if mo and int(mo.group(1)) == y:
+                ymd = mo.group(2); ym = ymd[:6]
+                old.setdefault(ym, f"https://www.federalreserve.gov/fomc/beigebook/{y}/{ymd}/")
+        if len(old) == n0:
+            print(f"  release_index: {y} calendar fetched but no release folders parsed")
+
+    # ---- assemble --------------------------------------------------------------
     releases = []
     for ym in sorted(set(found) | set(old)):
-        if ym in found:                          # modern wins if a book exists in both
-            releases.append(Release(date=_ym_to_date(ym), ym=ym, landing_url=found[ym]))
-        else:
+        if int(ym[:4]) <= 2010 and ym in old:    # old-era wins for <=2010
             base = old[ym]
             durls = {d: f"{base}{i}.htm" for i, d in enumerate(DISTRICTS, start=1)}
             releases.append(Release(date=_ymd_from_base(base), ym=ym,
                                     landing_url=base + "default.htm",
                                     district_urls=durls, old_base=base))
+        elif ym in found:
+            releases.append(Release(date=_ym_to_date(ym), ym=ym, landing_url=found[ym]))
     releases.sort(key=lambda r: r.ym)
     print(f"release_index: {len(releases)} releases {start_year}-{end_year} "
-          f"({len(found)} modern, {len(old)} pre-2011) from {len(year_pages)} year pages")
+          f"({len(found)} modern >=2011, {len(old)} pre-2011 FOMC-calendar)")
     return releases
+
+
+def _abs(href: str) -> str:
+    """Absolutize a Board-site href (root-relative, protocol, or /monetarypolicy-relative)."""
+    if href.startswith("http"):
+        return href
+    return "https://www.federalreserve.gov" + (href if href.startswith("/")
+                                               else "/monetarypolicy/" + href)
 
 
 def _ymd_from_base(base: str) -> dt.date:
@@ -236,7 +253,14 @@ def parse_district_page(html: str) -> dict[str, str]:
         if not txt:
             continue
         low = txt.lower()
-        if low.startswith(("for more information", "back to top", "note:")):
+        if low.startswith(("for more information", "back to top", "return to top", "note:")):
+            break
+        # pre-2011 table-layout footer chrome (no semantic <footer> to decompose).
+        # All of these sit AFTER the district body, so breaking here is safe; the
+        # top-of-page nav ("Skip to content", district links) is <a> text the tag
+        # filter already ignores, so it is deliberately NOT listed.
+        if low in ("previous summary", "home", "monetary policy",
+                   "accessibility") or re.fullmatch(r"\d{4} calendar", low):
             break
         if el.name in ("h2", "h3", "h4", "h5", "h6", "strong", "b") and len(txt) < 70:
             canon = _CANON.get(_norm(txt))
