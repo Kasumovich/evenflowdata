@@ -97,14 +97,23 @@ def release_index(start_year: int = 2011, end_year: int | None = None) -> list[R
     pages, then harvest the monthly release links. No filename guessing.
     """
     end_year = end_year or dt.date.today().year
-    # 1) year pages: build directly (stable scheme) AND discover from the index.
-    year_pages = {f"{FED}/beigebook{y}.htm" for y in range(start_year, end_year + 1)}
+    # 1) year pages. Two schemes across eras:
+    #      2017+ :  /monetarypolicy/beigebook{YYYY}.htm
+    #      1996-2016 : /monetarypolicy/beigebook/beigebook{YYYY}.htm  (extra /beigebook/ folder)
+    year_pages = set()
+    for y in range(start_year, end_year + 1):
+        year_pages.add(f"{FED}/beigebook{y}.htm")
+        year_pages.add(f"{FED}/beigebook/beigebook{y}.htm")
     idx = _get(f"{FED}/beige-book-archive.htm")
     if idx:
         for a in BeautifulSoup(idx, "lxml").find_all("a", href=True):
             m = re.search(r"beigebook(\d{4})\.htm$", a["href"])
             if m and start_year <= int(m.group(1)) <= end_year:
-                year_pages.add(f"{FED}/beigebook{m.group(1)}.htm")
+                href = a["href"]
+                full = href if href.startswith("http") else \
+                    "https://www.federalreserve.gov" + (href if href.startswith("/")
+                                                        else "/monetarypolicy/" + href)
+                year_pages.add(full)
 
     # 2) each year page -> monthly release slugs (YYYYMM)
     found: dict[str, str] = {}
