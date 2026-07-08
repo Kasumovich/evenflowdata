@@ -273,7 +273,7 @@
   function frac(d){return d.getFullYear()+ (d.getMonth())/12;}
 
   // Real NBER recession spans (peak month -> trough month). Used as reference shading.
-  var NBER=[[1973+10/12,1975+2/12],[1980+0/12,1980+6/12],[1981+6/12,1982+10/12],
+  var NBER=[[1969+11/12,1970+11/12],[1973+10/12,1975+2/12],[1980+0/12,1980+6/12],[1981+6/12,1982+10/12],
             [1990+6/12,1991+2/12],[2001+2/12,2001+10/12],[2007+11/12,2009+5/12],[2020+1/12,2020+3/12]];
   function inRec(f){for(var k=0;k<NBER.length;k++)if(f>=NBER[k][0]&&f<=NBER[k][1])return (f-NBER[k][0])/((NBER[k][1]-NBER[k][0])||1);return -1;}
 
