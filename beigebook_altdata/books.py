@@ -285,13 +285,29 @@ def _match_district(text: str) -> str | None:
 
 
 def _refine_date(landing_html: str, ym: str) -> dt.date:
-    """Pull the real release date from the landing page (e.g. 'June 04, 2025')."""
+    """Pull the PUBLICATION date of the book — how Beige Books are referenced.
+
+    Priority: (1) the release date encoded in the PDF filename on the page
+    (BeigeBook_YYYYMMDD.pdf or fullreport{YYYYMMDD}.pdf) — canonical and stable;
+    (2) the 'Last Update' date; (3) the first date on the page (the collection
+    cutoff) as a last resort. This makes modern books publication-dated, matching
+    the pre-2011 books (whose /fomc/.../YYYYMMDD/ folder is already the release date).
+    """
+    m = re.search(r"(?:BeigeBook_|fullreport)(\d{8})\.pdf", landing_html)
+    if m:
+        s = m.group(1)
+        try:
+            return dt.date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+        except ValueError:
+            pass
     txt = BeautifulSoup(landing_html, "lxml").get_text(" ", strip=True)
-    m = re.search(r"(January|February|March|April|May|June|July|August|September|"
-                  r"October|November|December)\s+(\d{1,2}),\s+(\d{4})", txt)
+    months = (r"(January|February|March|April|May|June|July|August|September|"
+              r"October|November|December)\s+(\d{1,2}),\s+(\d{4})")
+    mu = re.search(r"Last Update:\s*" + months, txt)
+    m = mu or re.search(months, txt)          # 'Last Update' first, else the first date (collection)
     if m:
         try:
-            return dt.datetime.strptime(m.group(0), "%B %d, %Y").date()
+            return dt.datetime.strptime(f"{m.group(1)} {m.group(2)}, {m.group(3)}", "%B %d, %Y").date()
         except ValueError:
             pass
     return _ym_to_date(ym)
