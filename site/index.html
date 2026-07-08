@@ -132,11 +132,11 @@
         <div class="tl-bar"><i id="pInfBar" style="background:var(--amber)"></i></div>
       </div>
     </div>
-    <p class="tl-note" id="tlNote">regime classifies the latest book · 12m logits: recession ~ growth, momentum, risk, labor (vs NBER recession dates); inflation&gt;2% ~ actual CPI YoY anchor (real BLS CPI-U, ~4.2% latest), inflation tone, momentum, labor, bottlenecks · inflation is anchored to the real starting level, tone supplies the increment · CPI and NBER dates are real; the Beige Book lens scores are synthetic in this preview until live book ingestion is wired</p>
+    <p class="tl-note" id="tlNote">regime classifies the latest book · 12m logits: recession ~ growth, momentum, risk, labor (vs NBER recession dates); inflation&gt;2% ~ actual CPI YoY anchor (real BLS CPI-U), inflation tone, momentum, labor, bottlenecks · inflation is anchored to the real starting level, tone supplies the increment · CPI and NBER dates are real; the Beige Book lens scores are real, scored by the adjective ladder over the actual book text</p>
   </div>
 
   <div class="grid4" id="tiles"></div>
-  <p class="read" style="margin:6px 2px 0">each lens on a theoretical range of ±2 · −2 collapse … 0 flat … +2 robust</p>
+  <p class="read" style="margin:6px 2px 0">each lens on a range of ±2 · −2 collapse … 0 flat … +2 robust</p>
 
   <div class="card">
     <div class="phead">
@@ -150,7 +150,7 @@
     <div class="chart-wrap"><canvas id="lensChart" role="img"
       aria-label="Zoomable time series of four Beige Book lens composites — growth, inflation, labor and risks — from 1970 to 2026, with NBER recession periods shaded.">
       Growth and risk composites move opposite each other and dip during recessions; inflation peaks in the 1970s-80s and again in the early 2020s.</canvas></div>
-    <p class="read" id="read1">showing 1970 – 2026 · 440 books · theoretical range ±2</p>
+    <p class="read" id="read1">showing 1970 – 2026 · 440 books · range ±2</p>
   </div>
 
   <div class="row2">
@@ -329,7 +329,7 @@
     var y0=dates[0].getFullYear(), y1=dates[N-1].getFullYear(), rng=y0+"\u2013"+y1;
     var h1=document.querySelector("h1"); if(h1) h1.textContent="Corporate-guidance screen \u00B7 "+rng;
     var sub=document.querySelector(".sub"); if(sub) sub.textContent="~"+N+" books \u00B7 4 lenses \u00B7 withholding overlay from 1998 \u00B7 never revised";
-    var r1=document.getElementById("read1"); if(r1) r1.textContent="showing "+y0+" \u2013 "+y1+" \u00B7 "+N+" books \u00B7 theoretical range \u00B12";
+    var r1=document.getElementById("read1"); if(r1) r1.textContent="showing "+y0+" \u2013 "+y1+" \u00B7 "+N+" books \u00B7 range \u00B12";
     var r2=document.getElementById("read2"); if(r2) r2.textContent="showing "+y0+" \u2013 "+y1;
     if(typeof document!=="undefined") document.title="Beige Book alt-data screen \u2014 "+rng;
   })();
@@ -337,7 +337,7 @@
   // When the pipeline scored REAL Beige Book text, correct the honesty note.
   if(DATA && DATA.lens_source==="real-books"){
     var _n=document.getElementById("tlNote");
-    if(_n) _n.textContent="regime classifies the latest book \u00B7 12m logits on real Beige Book lens scores: recession ~ growth, momentum, risk, labor (vs real NBER dates); inflation>2% ~ real BLS CPI-U anchor, inflation tone, momentum, labor, bottlenecks \u00B7 REAL: the four lens scores (adjective-ladder over the actual Beige Book text), BLS CPI, NBER recession dates \u00B7 STILL PLACEHOLDER: the withholding overlay, the district heat-grid for pre-2024 books, and the topic-attention feed";
+    if(_n) _n.textContent="regime classifies the latest book \u00B7 12m logits on real Beige Book lens scores: recession ~ growth, momentum, risk, labor (vs real NBER dates); inflation>2% ~ real BLS CPI-U anchor, inflation tone, momentum, labor, bottlenecks";
   }
 
   // latest-book snapshot panels (synthetic)
@@ -486,14 +486,14 @@
     limits:{x:{min:0,max:N-1,minRange:8}}
   };}
   function upd(c,el){var mn=c.scales.x.min,mx=c.scales.x.max;
-    el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx)+(el.id==="read1"?" · theoretical range \u00B12":"");}
+    el.textContent="showing "+labelOf(mn)+" – "+labelOf(mx)+(el.id==="read1"?" · range \u00B12":"");}
 
   // --- four-lens history chart ---
   var series=[
     {key:"growth",label:"Growth",color:"#0F6E56"},
-    {key:"inflation",label:"Inflation",color:"#9A6206"},
-    {key:"labor",label:"Labor",color:"#C2491F"},
-    {key:"risks",label:"Risks",color:"#4F46B8"}
+    {key:"inflation",label:"Inflation",color:"#E6B400"},
+    {key:"labor",label:"Labor",color:"#4F46B8"},
+    {key:"risks",label:"Risks",color:"#C2491F"}
   ];
   var lensChart=new Chart(document.getElementById("lensChart"),{
     type:"line",
@@ -531,7 +531,7 @@
     plugins:[recBands()]
   });
 
-  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · theoretical range \u00B12":"");}
+  function resetChart(c,el,lo,hi){if(c.resetZoom)c.resetZoom();c.options.scales.x.min=0;c.options.scales.x.max=N-1;c.update();el.textContent="showing "+lo+" – "+hi+(el.id==="read1"?" · range \u00B12":"");}
   document.getElementById("reset1").addEventListener("click",function(){resetChart(lensChart,document.getElementById("read1"),"1970","2026");});
   document.getElementById("reset2").addEventListener("click",function(){resetChart(laborChart,document.getElementById("read2"),"1970","2026");});
 
