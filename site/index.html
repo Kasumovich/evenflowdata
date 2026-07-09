@@ -52,6 +52,8 @@
   .row2{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
   .hm-row{display:grid;grid-template-columns:104px repeat(4,1fr);gap:3px;align-items:center;margin-bottom:3px}
   .hm-row span:first-child{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .hm-nat span:first-child{color:var(--ink);font-weight:600}
+  .hm-nat{border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:5px}
   .hm-h{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center}
   .cell{height:18px;border-radius:3px}
   .legend{display:flex;align-items:center;gap:8px;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--muted)}
@@ -142,6 +144,22 @@
   <div class="grid4" id="tiles"></div>
   <p class="read" style="margin:6px 2px 0">each lens on a potential range of ±2 · −2 collapse … 0 flat … +2 robust</p>
 
+  <div class="row2">
+    <div class="card" style="margin:0">
+      <p class="panel-title">District × lens — latest book</p>
+      <p class="panel-note">shaded vs each lens's own last-10-yr norm · pale = on par with the decade · green = better than its decade, red = worse</p>
+      <div id="heatmap"></div>
+      <div class="legend"><span>worse vs 10-yr norm</span>
+        <i style="background:#C2491F"></i><i style="background:#E3A48F"></i><i style="background:#F0EFEA"></i><i style="background:#7FBBA6"></i><i style="background:#0F6E56"></i>
+        <span>stronger</span></div>
+    </div>
+    <div class="card" style="margin:0">
+      <p class="panel-title">Topic-attention router</p>
+      <p class="panel-note">word-share drift · latest book</p>
+      <div id="topics"></div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="phead">
       <div>
@@ -169,23 +187,6 @@
     <div class="chart-wrap"><canvas id="lensSmooth" role="img" aria-label="LOESS local-regression curve through the four lens composites, 1970 to 2026, shown as a hindsight benchmark (not point-in-time)."></canvas></div>
     <p class="read" id="read3">showing 1970 – 2026 · smoothed benchmark (hindsight)</p>
   </div>
-
-  <div class="row2">
-    <div class="card" style="margin:0">
-      <p class="panel-title">District × lens — latest book</p>
-      <p class="panel-note">each cell = that district’s lens level · latest book</p>
-      <div id="heatmap"></div>
-      <div class="legend"><span>contracting</span>
-        <i style="background:#C2491F"></i><i style="background:#E89A7C"></i><i style="background:#E7E5DF"></i><i style="background:#7FCBB0"></i><i style="background:#0F6E56"></i>
-        <span>expanding</span></div>
-    </div>
-    <div class="card" style="margin:0">
-      <p class="panel-title">Topic-attention router</p>
-      <p class="panel-note">word-share drift · latest book</p>
-      <div id="topics"></div>
-    </div>
-  </div>
-
 
   <div class="card">
     <div class="phead">
@@ -447,13 +448,27 @@
       +'</svg>';
   })();
 
-  // heatmap
-  function cellColor(v){return v<=-.4?"#C2491F":v<=-.1?"#E89A7C":v<.1?"#E7E5DF":v<.4?"#7FCBB0":"#0F6E56";}
+  // heatmap — each cell shaded vs that lens's OWN last-10-yr norm (relative, not absolute).
+  // pale = on par with the decade; deeper green = stronger-than-norm, red = weaker.
   var lh=["Growth","Inflation","Labor","Risk"];
+  var HCOL=[{k:"growth",up:true},{k:"inflation",up:false},{k:"labor",up:true},{k:"risks",up:false}];
+  function stat10(arr){var a=(arr||[]).slice(-80).filter(function(v){return v!=null;});
+    if(!a.length)return{m:0,s:1};var m=a.reduce(function(x,y){return x+y;},0)/a.length;
+    var vv=a.reduce(function(x,y){return x+(y-m)*(y-m);},0)/a.length;return{m:m,s:Math.sqrt(vv)||1};}
+  var HST=HCOL.map(function(c){return stat10(lens[c.k]);});
+  function mixHex(a,b,f){function h(x){return[parseInt(x.substr(1,2),16),parseInt(x.substr(3,2),16),parseInt(x.substr(5,2),16)];}
+    var A=h(a),B=h(b);return"#"+[0,1,2].map(function(i){return("0"+Math.round(A[i]+(B[i]-A[i])*f).toString(16)).slice(-2);}).join("");}
+  function relColor(v,c){var st=HST[c],t=Math.max(-1,Math.min(1,(v-st.m)/(2.2*(st.s||1))));
+    if(HCOL[c].up)   // growth, labor: on-par = light green; above norm deeper green, below -> red
+      return t>=0?mixHex("#CFE6DB","#0F6E56",t):mixHex("#CFE6DB","#C2491F",-t);
+    return t>=0?mixHex("#EFE7D9","#C2491F",t):mixHex("#EFE7D9","#0F6E56",-t);} // inflation, risk: above norm = hotter (red)
+  var natRow=HCOL.map(function(c){var a=lens[c.k]||[];return a.length?a[a.length-1]:0;});
+  function hmCell(v,c,name){return '<span class="cell" style="background:'+relColor(v,c)+'" title="'+name+' · '+lh[c]+' '+v.toFixed(2)+' (10-yr norm '+HST[c].m.toFixed(2)+')"></span>';}
   document.getElementById("heatmap").innerHTML=
     '<div class="hm-row"><span></span>'+lh.map(function(l){return '<span class="hm-h">'+l+'</span>';}).join("")+'</div>'+
+    '<div class="hm-row hm-nat"><span>National</span>'+natRow.map(function(v,c){return hmCell(v,c,"National");}).join("")+'</div>'+
     hmDistricts.map(function(d,i){return '<div class="hm-row"><span>'+d+'</span>'+
-      hmVals[i].map(function(v){return '<span class="cell" style="background:'+cellColor(v)+'" title="'+d+' · '+v.toFixed(2)+'"></span>';}).join("")+'</div>';}).join("");
+      hmVals[i].map(function(v,c){return hmCell(v,c,d);}).join("")+'</div>';}).join("");
 
   // topics
   document.getElementById("topics").innerHTML=topics.map(function(t){
