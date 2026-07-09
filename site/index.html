@@ -33,6 +33,7 @@
   .tile .meta{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:4px}
   .panel-title{font-size:15px;font-weight:600;margin:0 0 2px}
   .panel-note{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .row2 .panel-note{min-height:2.6em}
   .phead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
   .ctrls{display:flex;gap:8px;align-items:center}
   .hint{font-family:var(--mono);font-size:11px;color:var(--faint)}
@@ -50,7 +51,7 @@
   .chart-wrap.sm{height:300px}
   .read{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
   .row2{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
-  .hm-row{display:grid;grid-template-columns:104px repeat(4,1fr);gap:3px;align-items:center;margin-bottom:3px}
+  .hm-row{display:grid;grid-template-columns:128px repeat(4,1fr);gap:3px;align-items:center;margin-bottom:3px}
   .hm-row span:first-child{font-family:var(--mono);font-size:11px;color:var(--muted)}
   .hm-nat span:first-child{color:var(--ink);font-weight:600}
   .hm-nat{border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:5px}
@@ -58,11 +59,12 @@
   .cell{height:18px;border-radius:3px}
   .legend{display:flex;align-items:center;gap:8px;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--muted)}
   .legend i{width:22px;height:11px;display:inline-block}
-  .topic{display:flex;align-items:center;gap:10px;margin-bottom:9px}
-  .topic .n{width:128px;font-size:13px}
+  .topic{display:grid;grid-template-columns:128px 1fr auto;column-gap:3px;align-items:center;margin-bottom:9px}
+  #topics{padding-top:18px}
+  .topic .n{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .topic .bar{flex:1;height:9px;background:#EDEEF1;border-radius:5px;overflow:hidden}
   .topic .bar i{display:block;height:100%;background:var(--indigo)}
-  .topic .tag{font-family:var(--mono);font-size:11px;white-space:nowrap}
+  .topic .tag{font-family:var(--mono);font-size:11px;white-space:nowrap;margin-left:8px}
   .rising{color:var(--amber)}.steady{color:var(--faint)}
   .feed div{border-left:2px solid var(--line2);padding:2px 0 2px 12px;margin-bottom:11px}
   .feed .src{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:2px}
@@ -147,11 +149,11 @@
   <div class="row2">
     <div class="card" style="margin:0">
       <p class="panel-title">District × lens — latest book</p>
-      <p class="panel-note">shaded vs each lens's own last-10-yr norm · pale = on par with the decade · green = better than its decade, red = worse</p>
+      <p class="panel-note">shaded vs each lens's own last-10-yr norm · pale = on par with the decade · green = higher than its decade norm, red = lower</p>
       <div id="heatmap"></div>
-      <div class="legend"><span>worse vs 10-yr norm</span>
+      <div class="legend"><span>lower vs 10-yr norm</span>
         <i style="background:#C2491F"></i><i style="background:#E3A48F"></i><i style="background:#F0EFEA"></i><i style="background:#7FBBA6"></i><i style="background:#0F6E56"></i>
-        <span>stronger</span></div>
+        <span>higher</span></div>
     </div>
     <div class="card" style="margin:0">
       <p class="panel-title">Topic-attention router</p>
@@ -353,15 +355,20 @@
     if(_n) _n.textContent="regime classifies the latest book \u00B7 12m logits on real Beige Book lens scores: recession ~ growth, momentum, risk, labor (vs real NBER dates); inflation>2% ~ real BLS CPI-U anchor, inflation tone, momentum, labor, bottlenecks";
   }
 
-  // latest-book snapshot panels (synthetic)
+  // latest-book snapshot tiles: breadth (# of districts positive) + σ (cross-district), from real cells
+  var hmVals=(DATA&&DATA.hmVals)||[[.3,.5,-.2,.4],[.4,.6,-.1,.5],[.2,.5,-.3,.3],[.1,.4,0,.2],[.3,.6,-.2,.4],[.5,.5,-.4,.6],[.2,.5,-.1,.3],[.3,.4,-.2,.2],[.1,.3,.1,.1],[.4,.6,-.3,.5],[.6,.7,-.5,.7],[-.1,.4,.2,.5]];
+  function colStats(c){var v=hmVals.map(function(r){return r[c];}).filter(function(x){return x!=null;}),n=v.length||1;
+    var pos=v.filter(function(x){return x>0;}).length,m=v.reduce(function(a,b){return a+b;},0)/n;
+    var sd=Math.sqrt(v.reduce(function(a,b){return a+(b-m)*(b-m);},0)/n);
+    return {pos:pos,n:v.length,sd:sd,rng:(Math.max.apply(null,v)-Math.min.apply(null,v))};}
+  var _gS=colStats(0),_iS=colStats(1),_lS=colStats(2),_rS=colStats(3);
   var tiles=[
-    {lens:"Growth",val:fmtv(lens.growth[N-1]),prev:lens.growth[N-2],cur:lens.growth[N-1],meta:"breadth 8/12 · σ 0.19"},
-    {lens:"Inflation",val:fmtv(lens.inflation[N-1]),prev:lens.inflation[N-2],cur:lens.inflation[N-1],meta:"breadth 10/12 · σ 0.12"},
-    {lens:"Labor",val:fmtv(laborTone[N-1]),prev:laborTone[N-2],cur:laborTone[N-1],meta:"tone · derived"},
-    {lens:"Risks",val:fmtv(lens.risks[N-1]),prev:lens.risks[N-2],cur:lens.risks[N-1],meta:"σ-spread 0.28 · widening"}
+    {lens:"Growth",val:fmtv(lens.growth[N-1]),prev:lens.growth[N-2],cur:lens.growth[N-1],meta:"breadth "+_gS.pos+"/"+_gS.n+" · σ "+_gS.sd.toFixed(2)},
+    {lens:"Inflation",val:fmtv(lens.inflation[N-1]),prev:lens.inflation[N-2],cur:lens.inflation[N-1],meta:"breadth "+_iS.pos+"/"+_iS.n+" · σ "+_iS.sd.toFixed(2)},
+    {lens:"Labor",val:fmtv(laborTone[N-1]),prev:laborTone[N-2],cur:laborTone[N-1],meta:"breadth "+_lS.pos+"/"+_lS.n+" · σ "+_lS.sd.toFixed(2)},
+    {lens:"Risks",val:fmtv(lens.risks[N-1]),prev:lens.risks[N-2],cur:lens.risks[N-1],meta:"σ "+_rS.sd.toFixed(2)+" · range "+_rS.rng.toFixed(2)}
   ];
   var hmDistricts=["Boston","New York","Philadelphia","Cleveland","Richmond","Atlanta","Chicago","St. Louis","Minneapolis","Kansas City","Dallas","San Francisco"];
-  var hmVals=(DATA&&DATA.hmVals)||[[.3,.5,-.2,.4],[.4,.6,-.1,.5],[.2,.5,-.3,.3],[.1,.4,0,.2],[.3,.6,-.2,.4],[.5,.5,-.4,.6],[.2,.5,-.1,.3],[.3,.4,-.2,.2],[.1,.3,.1,.1],[.4,.6,-.3,.5],[.6,.7,-.5,.7],[-.1,.4,.2,.5]];
   var topics=(DATA&&DATA.topics)||[{n:"Tariffs / trade",w:74,up:true},{n:"Labor availability",w:58,up:false},{n:"Supply chain",w:41,up:true},{n:"Credit conditions",w:33,up:false},{n:"AI / automation",w:29,up:true}];
   // ===================== END DATA BLOCK ==============================
 
@@ -459,9 +466,7 @@
   function mixHex(a,b,f){function h(x){return[parseInt(x.substr(1,2),16),parseInt(x.substr(3,2),16),parseInt(x.substr(5,2),16)];}
     var A=h(a),B=h(b);return"#"+[0,1,2].map(function(i){return("0"+Math.round(A[i]+(B[i]-A[i])*f).toString(16)).slice(-2);}).join("");}
   function relColor(v,c){var st=HST[c],t=Math.max(-1,Math.min(1,(v-st.m)/(2.2*(st.s||1))));
-    if(HCOL[c].up)   // growth, labor: on-par = light green; above norm deeper green, below -> red
-      return t>=0?mixHex("#CFE6DB","#0F6E56",t):mixHex("#CFE6DB","#C2491F",-t);
-    return t>=0?mixHex("#EFE7D9","#C2491F",t):mixHex("#EFE7D9","#0F6E56",-t);} // inflation, risk: above norm = hotter (red)
+    return t>=0?mixHex("#ECEAE3","#0F6E56",t):mixHex("#ECEAE3","#C2491F",-t);} // green = HIGHER than 10-yr norm, red = LOWER
   var natRow=HCOL.map(function(c){var a=lens[c.k]||[];return a.length?a[a.length-1]:0;});
   function hmCell(v,c,name){return '<span class="cell" style="background:'+relColor(v,c)+'" title="'+name+' · '+lh[c]+' '+v.toFixed(2)+' (10-yr norm '+HST[c].m.toFixed(2)+')"></span>';}
   document.getElementById("heatmap").innerHTML=
