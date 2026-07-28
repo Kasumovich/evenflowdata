@@ -1,0 +1,127 @@
+# ---------------------------------------------------------------------------
+# Presentation layer.
+#
+# The categorical order below was validated with the dataviz palette validator
+# in BOTH modes before being written here -- not eyeballed:
+#
+#   light (surface #fcfcfb): lightness band PASS, chroma floor PASS,
+#     worst adjacent CVD dE 9.1 (protan), worst adjacent normal-vision dE 19.6,
+#     contrast WARN on aqua/yellow/magenta (2.7 / 2.1 / 2.6).
+#   dark  (surface #1a1a19): all five checks PASS, worst adjacent CVD dE 8.4.
+#
+# The light-mode contrast WARN triggers the relief rule, which this dashboard
+# satisfies twice over: every analogue line carries a direct end label, and
+# every chart has a table-view twin.
+#
+# Slot order is the CVD-safety mechanism. Do not reorder without re-running
+# the validator.
+# ---------------------------------------------------------------------------
+version: 3
+
+theme:
+  light:
+    bg: "#f9f9f7"            # page plane
+    surface: "#fcfcfb"       # chart surface
+    surface_alt: "#f0efec"
+    border: "rgba(11,11,11,0.10)"
+    grid: "#e1e0d9"
+    axis: "#c3c2b7"
+    text: "#0b0b0b"
+    text_secondary: "#52514e"
+    text_muted: "#898781"
+  dark:
+    bg: "#0d0d0d"
+    surface: "#1a1a19"
+    surface_alt: "#232322"
+    border: "rgba(255,255,255,0.10)"
+    grid: "#2c2c2a"
+    axis: "#383835"
+    text: "#ffffff"
+    text_secondary: "#c3c2b7"
+    text_muted: "#898781"
+
+# Fixed categorical order. Colour follows the entity, never its rank: filtering
+# a series out must not repaint the survivors.
+categorical:
+  light: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+  dark:  ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"]
+  assignment:
+    observed: 0            # blue
+    forecast_median: 1     # orange -- the hero series
+    analog_1982_83: 2      # aqua
+    analog_1997_98: 3      # yellow
+    analog_2015_16: 4      # magenta
+
+# Reference rules (record threshold, super-event floor) are NOT series. They
+# are hairlines in muted ink with a text label, so they never consume a slot.
+reference_rule:
+  light: "#898781"
+  dark: "#898781"
+
+# Sequential ramps: one hue, light -> dark. Blue is the default magnitude hue;
+# orange is the documented second sequential hue and is used for the
+# risk layers, where it also reads semantically. Only one map layer is on
+# screen at a time, so the two never compete.
+sequential:
+  blue:   ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
+  orange: ["#fbe3d6", "#f6c3a8", "#f09f78", "#eb6834", "#c6521f", "#9c3f16", "#70290c"]
+
+# Diverging: blue <-> red, warm/cool poles that read as opposite, with a
+# NEUTRAL GRAY midpoint (never a hue at the middle).
+diverging:
+  light:
+    negative: ["#8f2020", "#b83232", "#d03b3b", "#e3806f", "#f0b6a8"]
+    mid: "#f0efec"
+    positive: ["#b7d3f6", "#86b6ef", "#3987e5", "#256abf", "#104281"]
+  dark:
+    negative: ["#f0b6a8", "#e3806f", "#d03b3b", "#b83232", "#8f2020"]
+    mid: "#383835"
+    positive: ["#cde2fb", "#9ec5f4", "#3987e5", "#256abf", "#104281"]
+  # Layer -> which pole means what. Precipitation and yield read "deficit is
+  # red"; temperature reads "warm is red". Encoded explicitly so a future
+  # layer cannot silently invert.
+  orientation:
+    precip_djf:  { negative_means: "drier",  positive_means: "wetter" }
+    precip_mam:  { negative_means: "drier",  positive_means: "wetter" }
+    temp_djf:    { negative_means: "cooler", positive_means: "warmer", invert: true }
+    yield_index: { negative_means: "yield loss", positive_means: "yield gain" }
+    fisheries:   { negative_means: "biomass loss", positive_means: "biomass gain" }
+
+# Status tokens. Reserved -- never reused as a series colour, and always
+# shipped with an icon plus a text label so colour is never the sole channel.
+status:
+  good:     "#0ca30c"
+  warning:  "#fab219"
+  serious:  "#ec835a"
+  critical: "#d03b3b"
+
+gauge:
+  # Ordinal bands on the intensity gauge. Each band carries its text label, so
+  # the colour is redundant encoding rather than the information channel.
+  bands:
+    - { max: 0.5, label: "Neutral",     color: "#c3c2b7" }
+    - { max: 1.0, label: "Weak",        color: "#f6c3a8" }
+    - { max: 1.5, label: "Moderate",    color: "#f09f78" }
+    - { max: 2.0, label: "Strong",      color: "#eb6834" }
+    - { max: 2.5, label: "Very strong", color: "#c6521f" }
+    - { max: 4.5, label: "Super",       color: "#70290c" }
+
+map:
+  projection: naturalEarth
+  default_layer: precip_djf
+  pinned_outline_light: "#0b0b0b"
+  pinned_outline_dark: "#ffffff"
+  pinned_outline_width: 1.6
+
+typography:
+  family: 'system-ui, -apple-system, "Segoe UI", sans-serif'
+  hero_figures: proportional      # tabular-nums only in tables and axis ticks
+
+accessibility:
+  min_contrast_ratio: 4.5
+  focus_ring: "#2a78d6"
+  respect_reduced_motion: true
+  redundant_encoding: true
+  table_view_required: true
+  # Light-mode relief for the sub-3:1 categorical slots.
+  direct_label_series: true

@@ -1,0 +1,545 @@
+{
+  "_comment": [
+    "Bundled seed snapshot. Serves three purposes:",
+    "  1. Offline/air-gapped operation and CI without network.",
+    "  2. Last-good fallback when a live source fails (served with stale=true).",
+    "  3. Reproducible fixtures for the test suite.",
+    "Every series carries an explicit `provenance` tag which is surfaced in the",
+    "dashboard hover cards. `verified` = read from the cited primary source on",
+    "the retrieval date. `cached` = primary-source value held from an earlier",
+    "read, refreshed verbatim on the first live run. `reconstructed` = derived",
+    "from published summary statistics because the underlying series is not",
+    "publicly distributed; treated as indicative, never as observation.",
+    "`valid_time` is the date the observation REFERS TO, which is not the date it was retrieved. Staleness must be measured from valid_time: an earlier build measured it from the store write, so a seed value written this run reported 0 h age and the stale-data alarm could never fire."
+  ],
+  "meta": {
+    "snapshot_date": "2026-07-26",
+    "schema_version": 3,
+    "generator": "enso-tracker seed builder"
+  },
+  "oni_observed": {
+    "provenance": "verified",
+    "source": "NOAA CPC ONI v5",
+    "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php",
+    "retrieved": "2026-07-26",
+    "units": "degC",
+    "convention": "3-month running mean, era-specific 30-year climatology",
+    "series": [
+      {
+        "season": "DJF",
+        "year": 2025,
+        "value": -0.4
+      },
+      {
+        "season": "JFM",
+        "year": 2025,
+        "value": -0.2
+      },
+      {
+        "season": "FMA",
+        "year": 2025,
+        "value": -0.1
+      },
+      {
+        "season": "MAM",
+        "year": 2025,
+        "value": 0.0
+      },
+      {
+        "season": "AMJ",
+        "year": 2025,
+        "value": 0.0
+      },
+      {
+        "season": "MJJ",
+        "year": 2025,
+        "value": 0.0
+      },
+      {
+        "season": "JJA",
+        "year": 2025,
+        "value": -0.1
+      },
+      {
+        "season": "JAS",
+        "year": 2025,
+        "value": -0.3
+      },
+      {
+        "season": "ASO",
+        "year": 2025,
+        "value": -0.4
+      },
+      {
+        "season": "SON",
+        "year": 2025,
+        "value": -0.5
+      },
+      {
+        "season": "OND",
+        "year": 2025,
+        "value": -0.6
+      },
+      {
+        "season": "NDJ",
+        "year": 2025,
+        "value": -0.5
+      },
+      {
+        "season": "DJF",
+        "year": 2026,
+        "value": -0.4
+      },
+      {
+        "season": "JFM",
+        "year": 2026,
+        "value": -0.1
+      },
+      {
+        "season": "FMA",
+        "year": 2026,
+        "value": 0.1
+      },
+      {
+        "season": "MAM",
+        "year": 2026,
+        "value": 0.5
+      }
+    ],
+    "valid_time": "2026-04-15",
+    "valid_time_note": "MAM 2026 is a 3-month mean centred on April."
+  },
+  "weekly_nino": {
+    "provenance": "verified",
+    "source": "NOAA CPC ENSO Diagnostic Discussion",
+    "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.pdf",
+    "retrieved": "2026-07-26",
+    "issued": "2026-06-11",
+    "units": "degC",
+    "values": {
+      "nino34": 0.7,
+      "nino12": 2.1,
+      "nino4": 0.7
+    },
+    "alert_status": "El Nino Advisory",
+    "cpc_prob_very_strong_ndj": 0.63,
+    "valid_time": "2026-06-11"
+  },
+  "ensemble_forecast": {
+    "provenance": "verified",
+    "source": "Hausfather, The Climate Brink -- multi-model synthesis (NMME + C3S + SINTEX-F)",
+    "url": "https://www.theclimatebrink.com/p/the-strongest-el-nino-ever",
+    "corroborating_url": "https://yaleclimateconnections.org/2026/07/this-could-be-the-strongest-el-nino-on-record/",
+    "retrieved": "2026-07-26",
+    "initialization": "2026-07",
+    "n_models": 14,
+    "n_members": 667,
+    "model_families": {
+      "nmme": 6,
+      "c3s": 7,
+      "jamstec_sintex_f": 1
+    },
+    "peak_median_degC": 3.6,
+    "peak_p10_degC": 2.8,
+    "peak_p90_degC": 4.4,
+    "peak_p90_provenance": "reconstructed",
+    "peak_p90_note": "Upper bound is not published as a discrete figure; the source states the middle 80% of members spans 2.8 degC to above 3.6 degC. 4.4 is a symmetric-tail reconstruction and is rendered as an open-ended band.",
+    "prob_exceed_record_2p75": 0.91,
+    "peak_window": [
+      "2026-11-01",
+      "2027-01-31"
+    ],
+    "peak_centre_estimate": "2026-12-15",
+    "verification_caveat": "No El Nino of this amplitude exists in the observational record. Model skill above roughly 3 degC in Nino 3.4 is unverified by construction.",
+    "valid_time": "2026-07-01"
+  },
+  "ensemble_plume": {
+    "provenance": "reconstructed",
+    "method": "Monthly plume anchored on (a) the verified 2026 observed ONI path, (b) the published peak median/p10 and peak window, and (c) the mean seasonal phase-locking and decay shape of the 1982-83, 1997-98 and 2015-16 events. Shown so the trajectory is legible; replaced verbatim by per-member NMME/C3S data on the first credentialed run.",
+    "units": "degC",
+    "series": [
+      {
+        "month": "2026-06",
+        "median": 0.6,
+        "p10": 0.5,
+        "p90": 0.7,
+        "observed": 0.6
+      },
+      {
+        "month": "2026-07",
+        "median": 1.0,
+        "p10": 0.8,
+        "p90": 1.2,
+        "observed": null
+      },
+      {
+        "month": "2026-08",
+        "median": 1.6,
+        "p10": 1.2,
+        "p90": 2.0,
+        "observed": null
+      },
+      {
+        "month": "2026-09",
+        "median": 2.2,
+        "p10": 1.7,
+        "p90": 2.7,
+        "observed": null
+      },
+      {
+        "month": "2026-10",
+        "median": 2.8,
+        "p10": 2.2,
+        "p90": 3.4,
+        "observed": null
+      },
+      {
+        "month": "2026-11",
+        "median": 3.3,
+        "p10": 2.6,
+        "p90": 4.0,
+        "observed": null
+      },
+      {
+        "month": "2026-12",
+        "median": 3.6,
+        "p10": 2.8,
+        "p90": 4.4,
+        "observed": null
+      },
+      {
+        "month": "2027-01",
+        "median": 3.5,
+        "p10": 2.7,
+        "p90": 4.3,
+        "observed": null
+      },
+      {
+        "month": "2027-02",
+        "median": 3.1,
+        "p10": 2.3,
+        "p90": 3.9,
+        "observed": null
+      },
+      {
+        "month": "2027-03",
+        "median": 2.5,
+        "p10": 1.7,
+        "p90": 3.3,
+        "observed": null
+      },
+      {
+        "month": "2027-04",
+        "median": 1.8,
+        "p10": 1.0,
+        "p90": 2.6,
+        "observed": null
+      },
+      {
+        "month": "2027-05",
+        "median": 1.1,
+        "p10": 0.3,
+        "p90": 1.9,
+        "observed": null
+      },
+      {
+        "month": "2027-06",
+        "median": 0.5,
+        "p10": -0.3,
+        "p90": 1.4,
+        "observed": null
+      }
+    ],
+    "valid_time": "2026-07-01",
+    "valid_time_note": "July 2026 initialisation."
+  },
+  "historical_analogs": {
+    "provenance": "cached",
+    "source": "NOAA CPC ONI v5",
+    "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php",
+    "peak_values_verified": "2026-07-26",
+    "note": "Peak values re-verified against the CPC table on the retrieval date. Full monthly series is refreshed verbatim by the cpc_oni connector on the first live run.",
+    "units": "degC",
+    "events": {
+      "1982-83": {
+        "peak": 2.2,
+        "peak_season": "NDJ 1982",
+        "series": [
+          0.0,
+          0.1,
+          0.2,
+          0.5,
+          0.7,
+          0.7,
+          1.0,
+          1.5,
+          1.9,
+          2.1,
+          2.2,
+          2.2,
+          2.2,
+          1.9,
+          1.5,
+          1.2,
+          0.9,
+          0.6,
+          0.2
+        ]
+      },
+      "1997-98": {
+        "peak": 2.4,
+        "peak_season": "NDJ 1997",
+        "series": [
+          -0.5,
+          -0.4,
+          -0.1,
+          0.3,
+          0.8,
+          1.2,
+          1.6,
+          1.9,
+          2.1,
+          2.3,
+          2.4,
+          2.4,
+          2.2,
+          1.8,
+          1.4,
+          0.9,
+          0.4,
+          -0.2,
+          -0.7
+        ]
+      },
+      "2015-16": {
+        "peak": 2.8,
+        "peak_season": "NDJ 2015",
+        "series": [
+          0.5,
+          0.5,
+          0.6,
+          0.8,
+          1.0,
+          1.2,
+          1.5,
+          1.9,
+          2.2,
+          2.4,
+          2.6,
+          2.8,
+          2.5,
+          2.1,
+          1.6,
+          1.0,
+          0.5,
+          0.0,
+          -0.3
+        ]
+      }
+    },
+    "series_index_labels": [
+      "DJF",
+      "JFM",
+      "FMA",
+      "MAM",
+      "AMJ",
+      "MJJ",
+      "JJA",
+      "JAS",
+      "ASO",
+      "SON",
+      "OND",
+      "NDJ",
+      "DJF+1",
+      "JFM+1",
+      "FMA+1",
+      "MAM+1",
+      "AMJ+1",
+      "MJJ+1",
+      "JJA+1"
+    ],
+    "valid_time": null,
+    "reference_series": true,
+    "reference_note": "Closed historical events. These do not go stale and are excluded from observation-age alerting."
+  },
+  "market_baseline": {
+    "provenance": "mixed",
+    "note": "Absolute levels are populated by the first live market poll. Palm oil is seeded because a current level was available from a cited source; everything else is null until the yahoo_futures / worldbank_pinksheet connectors run.",
+    "as_of": "2026-07-26",
+    "prices": {
+      "palm_oil": {
+        "value": 4500,
+        "unit": "MYR/t",
+        "provenance": "verified",
+        "source": "Helios AI palm oil outlook, July 2026",
+        "url": "https://www.helios.sc/blog/el-nio-and-palm-oil-prices-what-commodity-markets-should-watch-in-h2-2026-and-2027",
+        "note": "Described as the current market zone rather than a settlement print."
+      },
+      "maize": {
+        "value": null,
+        "unit": "USc/bu",
+        "provenance": "pending_live_poll"
+      },
+      "wheat": {
+        "value": null,
+        "unit": "USc/bu",
+        "provenance": "pending_live_poll"
+      },
+      "soybeans": {
+        "value": null,
+        "unit": "USc/bu",
+        "provenance": "pending_live_poll"
+      },
+      "soybean_oil": {
+        "value": null,
+        "unit": "USc/lb",
+        "provenance": "pending_live_poll"
+      },
+      "rice": {
+        "value": null,
+        "unit": "USD/t",
+        "provenance": "pending_live_poll"
+      },
+      "coffee_arabica": {
+        "value": null,
+        "unit": "USc/lb",
+        "provenance": "pending_live_poll"
+      },
+      "coffee_robusta": {
+        "value": null,
+        "unit": "USD/t",
+        "provenance": "pending_live_poll"
+      },
+      "cocoa": {
+        "value": null,
+        "unit": "USD/t",
+        "provenance": "pending_live_poll"
+      },
+      "sugar": {
+        "value": null,
+        "unit": "USc/lb",
+        "provenance": "pending_live_poll"
+      },
+      "fishmeal": {
+        "value": null,
+        "unit": "USD/t",
+        "provenance": "pending_live_poll"
+      }
+    },
+    "valid_time": "2026-07-26"
+  },
+  "literature_anchors": {
+    "_comment": "Quantified, citable response magnitudes used to sanity-check the impact model. Any modelled output that departs from these by more than a factor of 2 raises a QC flag.",
+    "palm_oil_price_response": {
+      "value_pct": [
+        20,
+        40
+      ],
+      "lag_months": 6,
+      "provenance": "verified",
+      "source": "Helios AI",
+      "url": "https://www.helios.sc/blog/el-nio-and-palm-oil-prices-what-commodity-markets-should-watch-in-h2-2026-and-2027"
+    },
+    "malaysia_2015_16_production_loss_mt": {
+      "value": 2.4,
+      "provenance": "verified",
+      "source": "Helios AI",
+      "url": "https://www.helios.sc/blog/el-nio-and-palm-oil-prices-what-commodity-markets-should-watch-in-h2-2026-and-2027"
+    },
+    "malaysia_1998_production_loss_mt": {
+      "value": 0.75,
+      "provenance": "verified",
+      "source": "Helios AI",
+      "url": "https://www.helios.sc/blog/el-nio-and-palm-oil-prices-what-commodity-markets-should-watch-in-h2-2026-and-2027"
+    },
+    "brazil_fire_analog_ha": {
+      "value": 2300000,
+      "years": [
+        2016,
+        2024
+      ],
+      "multiple_of_2001_2025_average": 4,
+      "provenance": "verified",
+      "source": "World Resources Institute",
+      "url": "https://www.wri.org/insights/super-el-nino-impacts-explained"
+    },
+    "amazon_peak_fire_window": {
+      "value": "H2 2027",
+      "provenance": "verified",
+      "source": "World Resources Institute",
+      "url": "https://www.wri.org/insights/super-el-nino-impacts-explained"
+    },
+    "anchoveta_biomass_1997_98": {
+      "value_pct": -79,
+      "detail": "Peruvian anchoveta biomass fell from 5.8 Mt to a minimum of 1.2 Mt",
+      "event_intensity_degC": 2.4,
+      "provenance": "verified",
+      "source": "ICES Journal of Marine Science -- phenological mismatch and anchoveta landings",
+      "url": "https://academic.oup.com/icesjms/article/82/12/fsaf214/8369710"
+    },
+    "fishmeal_price_response": {
+      "value_pct": [
+        60,
+        100
+      ],
+      "detail": "A ~40% fall in global fishmeal production coincided with an ~80% price rise to an all-time high. Implied elasticity ~2.0, which is what the model uses. Band widened to 60-100% to reflect that this is one episode.",
+      "implied_elasticity": 2.0,
+      "provenance": "verified",
+      "source": "The Week -- the global anchovy crisis",
+      "url": "https://theweek.com/environment/anchovies-production-fishmeal-peru-el-nino"
+    },
+    "fishmeal_andean_share": {
+      "value": 0.32,
+      "detail": "Peru, Chile and Ecuador together account for nearly a third of world fishmeal.",
+      "provenance": "verified",
+      "source": "The Week -- the global anchovy crisis",
+      "url": "https://theweek.com/environment/anchovies-production-fishmeal-peru-el-nino"
+    }
+  },
+  "unverified_prompt_assertions": {
+    "_comment": [
+      "Figures supplied in the commissioning brief that could NOT be traced to a",
+      "primary source during the 2026-07-26 research pass. They are carried here",
+      "so they are auditable, and are rendered in the dashboard only inside the",
+      "explicitly-labelled scenario band -- never as forecasts. Step A re-attempts",
+      "attribution on every run and promotes anything that resolves."
+    ],
+    "food_system_value_usd_tn": {
+      "value": 14,
+      "status": "unattributed"
+    },
+    "multiyear_yield_loss_pct": {
+      "value": 3.5,
+      "crops": [
+        "maize",
+        "wheat",
+        "soy"
+      ],
+      "status": "unattributed"
+    },
+    "annual_loss_usd_bn": {
+      "value": 20,
+      "status": "unattributed"
+    },
+    "price_shock_general_pct": {
+      "value": [
+        10,
+        50
+      ],
+      "status": "unattributed"
+    },
+    "price_shock_rice_palm_coffee_pct": {
+      "value": [
+        50,
+        100
+      ],
+      "status": "unattributed",
+      "conflict": "Exceeds the only sourced El Nino palm price response found (20-40% at 6-month lag) by roughly 2-3x. Flagged as a tail scenario, not a central case."
+    },
+    "gmst_2027_above_preindustrial_degC": {
+      "value": 1.8,
+      "status": "partially_corroborated",
+      "note": "The 'warmest year on record by a sizable margin' framing is directly sourced; the specific 1.8 degC figure is not."
+    }
+  }
+}

@@ -1,0 +1,143 @@
+# ---------------------------------------------------------------------------
+# All numeric policy lives here. Nothing in src/ hard-codes a threshold.
+# ---------------------------------------------------------------------------
+version: 3
+
+climatology:
+  # Anomaly baseline. CPC ONI uses centred 30-year base periods that shift every
+  # 5 years ("era-specific"); a fixed 1991-2020 base is used for impact layers so
+  # that map layers are internally comparable across regions.
+  impact_baseline: "1991-2020"
+  oni_convention: "era_specific"     # matches CPC ONI v5 / the source chart
+  oni_window_months: 3               # 3-month running mean
+
+enso_categories:
+  # ONI thresholds, CPC convention. Applied to the 3-month running mean.
+  neutral:      [-0.5, 0.5]
+  weak:         [0.5, 1.0]
+  moderate:     [1.0, 1.5]
+  strong:       [1.5, 2.0]
+  very_strong:  [2.0, 2.5]
+  super:        [2.5, 99.0]
+
+records:
+  # Verified from CPC ONI v5 table.
+  oni_peak_1982_83: 2.2
+  oni_peak_1997_98: 2.4
+  oni_peak_2015_16: 2.8
+  # ERSSTv5 monthly Nino 3.4 peak used as the "record to beat" in the source
+  # forecast article. Differs from the ONI seasonal peak by construction.
+  ersst_monthly_record: 2.75
+
+alerts:
+  # Step F triggers.
+  ensemble_median_shift_degC: 0.30
+  source_failure_critical: [cpc_oni, cpc_weekly_nino, nmme, copernicus_c3s]
+  # Age of the RETRIEVAL -- how long since we last talked to the source.
+  stale_warn_h: 36
+  stale_critical_h: 96
+
+  # Age of the OBSERVATION -- how old the underlying measurement is. This is
+  # the one that matters, and it is per-dataset because a weekly product and a
+  # monthly product go stale at completely different rates. A single global
+  # threshold either screams at healthy monthly data or never fires at all.
+  #
+  # An earlier build measured staleness from the store write instead, so a
+  # value served from the seed snapshot reported 0 h and the alarm was
+  # structurally incapable of firing. `null` marks a reference series that
+  # does not age.
+  observation_age_h:
+    default:            {warn: 720,  critical: 2160}   # 30 d / 90 d
+    oni_observed:       {warn: 1080, critical: 1800}   # monthly release + lag
+    weekly_nino:        {warn: 240,  critical: 504}    # weekly product
+    nino34_monthly:     {warn: 1080, critical: 1800}
+    ensemble_plume:     {warn: 1080, critical: 1800}   # monthly initialisation
+    market_baseline:    {warn: 120,  critical: 336}    # trading days
+    futures_prices:     {warn: 96,   critical: 240}
+    historical_analogs: null                           # closed events
+  spread_blowout_p90_minus_p10: 2.5
+
+qc:
+  ranges:
+    oni: [-4.0, 6.0]
+    nino34: [-4.0, 6.0]
+    precip_anom_pct: [-100.0, 500.0]
+    temp_anom_degC: [-15.0, 15.0]
+    yield_impact_pct: [-80.0, 40.0]
+    price_pct_change: [-95.0, 500.0]
+  max_missing_fraction: 0.25
+  ensemble_min_members: 100
+  reject_on_range_violation: true
+
+impact_model:
+  # Teleconnection composites are calibrated on strong events (ONI ~ 2.4).
+  # Layers are scaled by (event_intensity / reference_intensity) ** damping.
+  reference_intensity_degC: 2.4
+  intensity_damping: 0.85
+  # Beyond this the response is treated as saturating; historical analogues do
+  # not constrain the model above ~3 degC and this is surfaced in the UI.
+  extrapolation_warning_degC: 2.8
+  confidence_penalty_above_warning: 0.35
+
+price_pressure:
+  # Elasticity of price to a 1% GLOBAL production shortfall, by commodity or
+  # group. Calibrated so that the one El Nino price response we could attribute
+  # to a citable source -- palm oil, +20-40% at a six-month lag -- falls inside
+  # the modelled band. See docs/DATA_DICTIONARY.md.
+  elasticity:
+    grains: 1.6
+    oilseeds: 1.8
+    softs: 2.4
+    proteins: 2.0
+    rice: 3.0
+    palm_oil: 2.2
+
+  # Stock cover modifies the elasticity. Centred so a median stock-to-use of
+  # ~0.20 gives a modifier near 1.0; deep stocks damp, thin stocks amplify.
+  # NOTE: an earlier build multiplied elasticity, an unbounded stock term AND a
+  # concentration term together, which compounded to a 242% palm response and
+  # was caught by the literature cross-check in qc.sanity_vs_literature. The
+  # bounds below exist so that cannot recur.
+  stock_modifier:
+    numerator: 0.30
+    offset: 0.10
+    min: 0.70
+    max: 1.60
+
+  # Thinly-traded commodities transmit a given production shock into world
+  # price more violently, because a small share of output crosses borders.
+  thin_market_multiplier: 1.5
+
+  # Lag from SST peak to price peak, months.
+  transmission_lag_months: 6
+  stock_to_use_buffer: true
+
+# ---------------------------------------------------------------------------
+# Fisheries transmission chain.
+#
+# Fishmeal previously borrowed the crop pipeline: its "yield sensitivity" was
+# the raw biomass anomaly, scaled linearly. Two things were wrong with that.
+#
+#   1. Linear scaling of a depletion process is unphysical -- it runs past
+#      -100%. Biomass is modelled here as fractional SURVIVAL raised to the
+#      intensity factor, which saturates correctly and can never go negative.
+#      Anchor: 1997-98 (ONI 2.4) took Peruvian anchoveta from 5.8 Mt to 1.2 Mt,
+#      a 79% loss -- so survival at the reference intensity is 0.21.
+#   2. Biomass is not landings and landings are not meal. The real chain runs
+#      through a quota decision and a rendering yield, and those deserve to be
+#      visible rather than buried in one fudged number.
+# ---------------------------------------------------------------------------
+fisheries:
+  # Fraction of biomass surviving at the reference intensity. 1 - 0.79.
+  reference_survival: 0.21
+  # Biomass -> landings. Observed near 1:1 in 1997-98 (biomass -79%, catch
+  # -78%): a precautionary manager cuts quota roughly in step with the survey.
+  # Deliberately NOT set above 1.0 -- amplification is plausible in theory but
+  # was not observed, and inventing it would be exactly the sort of unanchored
+  # multiplier that produced the +242% palm bug.
+  quota_transmission: 1.00
+  # Landings -> meal. Rendering yield is near-constant, so this is a pass-through.
+  meal_yield_transmission: 1.00
+  # Transmits into feed and aquaculture costs within a quarter -- far faster
+  # than any crop, because there are no carryover stocks to absorb the shock.
+  lag_months: 3

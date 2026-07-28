@@ -1,0 +1,19 @@
+# Core -- everything the keyless pipeline and the static dashboard need.
+pandas>=2.2
+numpy>=1.26
+PyYAML>=6.0
+requests>=2.31
+pyarrow>=15.0          # versioned Parquet store
+openpyxl>=3.1          # World Bank Pink Sheet workbook
+duckdb>=1.0            # analytics layer
+plotly>=5.22           # charts + vendored offline export
+
+# Interactive app
+streamlit>=1.36
+
+# Orchestration
+prefect>=3.0
+
+# Optional -- install with `pip install -r requirements-geo.txt` to activate the
+# gridded layers (CHIRPS zonal stats, ERA5/C3S seasonal, NMME OPeNDAP, GFAS).
+# Kept separate because these pull GDAL/PROJ and roughly quadruple image size.

@@ -1,0 +1,220 @@
+# ---------------------------------------------------------------------------
+# Acronym and jargon glossary.
+#
+# Drives three things in the dashboard, from this one file:
+#   1. `<abbr>` tagging -- any term below found in caption/detail prose gets a
+#      dotted underline and a hover/focus expansion.
+#   2. The glossary table in the Method tab.
+#   3. Nothing is expanded twice in the same sentence, so the prose stays
+#      readable rather than turning into a parenthetical thicket.
+#
+# ADD A TERM: append a block. `short` is optional and used where the full
+# expansion would not fit (tile labels, axis titles).
+# ---------------------------------------------------------------------------
+version: 1
+
+terms:
+
+  # --- core index and agency ---
+  ONI:
+    full: Oceanic Nino Index
+    short: Oceanic Nino Index
+    note: >
+      The headline measure of El Nino strength: a 3-month running mean of sea
+      surface temperature anomaly in the Nino 3.4 region, measured against a
+      30-year climatology that shifts every five years.
+    group: core
+
+  CPC:
+    full: NOAA Climate Prediction Center
+    short: Climate Prediction Center
+    note: >
+      The US agency that declares official El Nino / La Nina status and
+      publishes the ONI table this dashboard treats as the reference.
+    group: core
+
+  NOAA:
+    full: National Oceanic and Atmospheric Administration
+    group: core
+
+  "Nino 3.4":
+    full: "Nino 3.4 region (5 deg N-5 deg S, 170 deg W-120 deg W)"
+    note: >
+      The central-equatorial Pacific box whose sea surface temperature defines
+      the ONI. Not the only Nino region -- Nino 1+2 sits off the Peruvian coast
+      and responds far more sharply, which is why coastal Peru floods before
+      the headline index looks extreme.
+    group: core
+
+  SST:
+    full: sea surface temperature
+    group: core
+
+  ERSSTv5:
+    full: Extended Reconstructed Sea Surface Temperature, version 5
+    note: The gridded SST dataset underlying both the ONI and the record comparison.
+    group: core
+
+  ENSO:
+    full: El Nino-Southern Oscillation
+    note: The coupled ocean-atmosphere cycle of which El Nino is the warm phase.
+    group: core
+
+  # --- seasons ---
+  DJF:
+    full: December-January-February
+    group: season
+  MAM:
+    full: March-April-May
+    group: season
+  JJA:
+    full: June-July-August
+    group: season
+  SON:
+    full: September-October-November
+    group: season
+  NDJ:
+    full: November-December-January
+    group: season
+  OND:
+    full: October-November-December
+    group: season
+  JAS:
+    full: July-August-September
+    group: season
+
+  # --- forecast systems ---
+  NMME:
+    full: North American Multi-Model Ensemble
+    note: Six US and Canadian coupled forecast models run as one ensemble.
+    group: model
+
+  C3S:
+    full: Copernicus Climate Change Service
+    note: The European multi-system seasonal forecast, combining seven centres.
+    group: model
+
+  SEAS5:
+    full: ECMWF Seasonal Forecast System 5
+    group: model
+
+  ECMWF:
+    full: European Centre for Medium-Range Weather Forecasts
+    group: model
+
+  SINTEX-F:
+    full: Scale Interaction Experiment-Frontier coupled model (JAMSTEC)
+    group: model
+
+  JAMSTEC:
+    full: Japan Agency for Marine-Earth Science and Technology
+    group: model
+
+  ERA5:
+    full: ECMWF Reanalysis, 5th generation
+    note: Supplies the 1991-2020 baseline the impact layers are measured against.
+    group: model
+
+  CHIRPS:
+    full: Climate Hazards Group Infrared Precipitation with Stations
+    group: model
+
+  GFAS:
+    full: Global Fire Assimilation System
+    group: model
+
+  # --- agriculture and markets ---
+  WASDE:
+    full: World Agricultural Supply and Demand Estimates (USDA)
+    group: market
+  USDA:
+    full: United States Department of Agriculture
+    group: market
+  FAO:
+    full: Food and Agriculture Organization of the United Nations
+    group: market
+  GIEWS:
+    full: Global Information and Early Warning System (FAO)
+    group: market
+  AMIS:
+    full: Agricultural Market Information System
+    group: market
+  IPC:
+    full: Integrated Food Security Phase Classification
+    group: market
+  CBOT:
+    full: Chicago Board of Trade
+    group: market
+  ICE:
+    full: Intercontinental Exchange
+    group: market
+  FCPO:
+    full: crude palm oil futures contract (Bursa Malaysia)
+    group: market
+  FOB:
+    full: free on board (price at port of loading)
+    group: market
+  MYR:
+    full: Malaysian ringgit
+    group: market
+  IMARPE:
+    full: Instituto del Mar del Peru
+    note: Runs the anchoveta biomass surveys that set Peru's fishing quota.
+    group: market
+  SENAMHI:
+    full: Peru's national meteorology and hydrology service
+    group: market
+  ENFEN:
+    full: Peru's multi-agency El Nino study committee
+    note: Publishes the coastal El Nino index, which can diverge sharply from the ONI.
+    group: market
+  BMKG:
+    full: Indonesia's meteorology, climatology and geophysics agency
+    group: market
+
+  # --- jargon that reads like a plain word but is not ---
+  Confidence:
+    full: reliability weight, 0-1
+    note: >
+      How reliable this region's teleconnection is in the historical record,
+      multiplied by a 35% penalty applied while the forecast sits above the
+      amplitude any composite was calibrated on. The penalty is already
+      included in the number shown.
+    group: jargon
+
+  composite:
+    full: a published teleconnection composite, rescaled to forecast intensity
+    note: >
+      The typical response of a region to a strong El Nino, taken from the
+      literature and scaled up. Not dynamically downscaled model output -- the
+      sign is well established, the magnitude at this amplitude is not.
+    group: jargon
+
+  teleconnection:
+    full: a statistical link between Pacific sea surface temperature and distant weather
+    group: jargon
+
+  # --- statistics ---
+  p10:
+    full: 10th percentile
+    note: One in ten ensemble members falls below this value.
+    group: stat
+  p90:
+    full: 90th percentile
+    note: One in ten ensemble members falls above this value.
+    group: stat
+  HHI:
+    full: Herfindahl-Hirschman Index
+    note: A supply-concentration measure; higher means fewer countries dominate output.
+    group: stat
+  QC:
+    full: quality control
+    group: stat
+
+group_labels:
+  core: Climate indices and agencies
+  season: Three-month seasons
+  model: Forecast systems and datasets
+  market: Agriculture, markets and national agencies
+  jargon: Modelling terms
+  stat: Statistical terms

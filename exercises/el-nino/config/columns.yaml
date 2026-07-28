@@ -1,0 +1,172 @@
+# ---------------------------------------------------------------------------
+# Column definitions rendered as a note beneath each table, so a table can be
+# read -- or exported and sent to someone else -- without the reader needing
+# the Method tab or this repository.
+#
+# ADD A COLUMN: append here and the note updates. Columns present in the table
+# but missing here are listed as undocumented rather than silently omitted, so
+# the note cannot quietly fall behind the model.
+# ---------------------------------------------------------------------------
+version: 1
+
+tables:
+
+  commodities:
+    title: How to read this table
+    method: >
+      Price response is not measured; it is derived. The chain is:
+      <b>production shock</b> = sum over countries of (share of world
+      production x that country's yield sensitivity x intensity factor), where
+      the intensity factor is (forecast / 2.4)^0.85 = <b>1.41</b> at the
+      current 3.6 degC median -- sub-linear because teleconnection responses
+      saturate. Then <b>price response = -(production shock) x elasticity x
+      stock modifier x thin-market multiplier</b>. A negative shock (lost
+      output) therefore produces a positive price response. Fishmeal is the
+      exception: it routes through a fisheries chain instead, where biomass is
+      modelled as compounding depletion (survival raised to the intensity
+      factor) and then passes through the quota decision and rendering yield.
+    caveat: >
+      These are scenario outputs, not forecasts. Elasticities are calibrated so
+      that the two El Nino price responses we could attribute to a published
+      source fall inside the modelled band: palm oil +20-40% at a six-month
+      lag, and fishmeal ~+80% on a ~40% production fall. A modelled value that
+      departs from its anchor by more than 2x raises a quality-control flag.
+    columns:
+      - key: label
+        label: Commodity
+        definition: The traded commodity. Crop and fisheries routes are mixed in one table.
+      - key: exchange
+        label: Venue
+        definition: >
+          Where the reference price is set. OTC means no central exchange, so
+          the reference is a negotiated port price.
+      - key: production_shock_pct
+        label: Prod. shock %
+        definition: >
+          Modelled change in GLOBAL production, weighted by each country's share
+          of world output. Negative is lost supply. Positive values are real:
+          Argentina and southern Brazil gain in an El Nino, which is why
+          soybeans show a surplus.
+      - key: price_response_pct
+        label: Price response %
+        definition: >
+          Modelled price move at the peak of transmission. Positive means
+          upward pressure. See the method note above for the full chain.
+      - key: elasticity
+        label: Elasticity
+        definition: >
+          Percent price move per 1% of lost global production. Higher means a
+          given shortfall bites harder. Thin, unstocked markets sit above 2.
+      - key: stock_to_use
+        label: Stock/use
+        definition: >
+          Carryover stocks as a share of annual consumption. Deep stocks absorb
+          a shock; a dash means no meaningful carryover exists, which is why
+          fishmeal transmits so fast.
+      - key: stock_modifier
+        label: Stock mod.
+        definition: >
+          The multiplier that stock cover applies to elasticity, bounded to
+          [0.70, 1.60]. Deep stocks damp below 1.0; thin stocks amplify above.
+          The bound exists because an earlier unbounded version compounded into
+          a 242% palm-oil response.
+      - key: coverage
+        label: Modelled
+        definition: >
+          Share of world production this system has an ACTUAL response for. This
+          is the honest denominator -- read the shock as an estimate over this
+          much of the market, not the whole of it.
+      - key: listed_share
+        label: Listed
+        definition: >
+          Share of world production the system can name. The gap between Listed
+          and Modelled is supply known to exist but not modelled -- for fishmeal
+          that is largely Chinese rendering of imported raw material, which does
+          not respond to a Peruvian El Nino.
+      - key: lag_months
+        label: Lag (mo)
+        definition: >
+          Months from the sea-surface temperature peak to the expected price
+          peak. Perennials lag longest; fishmeal is fastest at 3 months.
+      - key: top_contributors
+        label: Top 3
+        definition: >
+          The three countries contributing the largest share of the modelled
+          shock, most negative first.
+
+  countries:
+    title: How to read this table
+    method: >
+      Every value here is a published teleconnection composite -- the typical
+      response of a region to a strong El Nino -- rescaled to the forecast
+      intensity by a factor of (forecast / 2.4)^0.85 = <b>1.41</b>. They are
+      <b>composite</b>, not model output: the sign of each response is well
+      established in the literature, the magnitude at this amplitude is not.
+    caveat: >
+      National means hide sub-national extremes. Peru is the clearest case --
+      the national figure is a fraction of what coastal Piura and Lambayeque
+      experience. Read the hazard list alongside the average.
+    columns:
+      - key: name
+        label: Region
+        definition: Country, or the modelled region where a country is treated as one unit.
+      - key: group_label
+        label: Group
+        definition: Teleconnection grouping, used for ordering rather than for any calculation.
+      - key: precip_djf
+        label: Precip DJF %
+        definition: >
+          Rainfall departure for December-February 2026-27, as a percent of the
+          1991-2020 seasonal total. Negative is drier.
+      - key: precip_mam
+        label: Precip MAM %
+        definition: Same, for March-May 2027 -- the decay-phase season.
+      - key: temp_djf
+        label: Temp DJF degC
+        definition: Temperature departure for December-February against the 1991-2020 mean.
+      - key: yield_index
+        label: Yield index %
+        definition: >
+          Exposure-weighted crop yield deviation across everything the country
+          grows. SIGNED: positive means a yield gain, which several regions
+          genuinely get.
+      - key: fire_drought
+        label: Fire/drought
+        definition: >
+          Combined fire and drought load, 0-100, normalised across the modelled
+          set so 100 is the worst region rather than an absolute ceiling. Ranks
+          regions against each other; it is not a probability.
+      - key: price_pressure
+        label: Price pressure
+        definition: >
+          0-100 index of how hard this country's losses push on world prices,
+          weighting its crops by elasticity and stock cover. A country can have
+          a large yield loss and low price pressure if it grows things the
+          world holds stocks of.
+      - key: fisheries
+        label: Fisheries %
+        definition: >
+          Fish biomass anomaly. Peru, Chile and Ecuador only -- blank elsewhere
+          means not modelled, not zero.
+      - key: confidence
+        label: Confidence
+        definition: >
+          How much weight to put on this row, 0 to 1. It is the product of two
+          things: how RELIABLE the teleconnection is for this region in the
+          historical record, and a penalty for forecasting beyond it.
+        detail: >
+          The base term is a per-region prior. Indonesia scores high (0.91
+          before penalty) because its dry signal appears in almost every El
+          Nino on record; West African cocoa scores low (0.46-0.48) because the
+          signal there barely clears noise. The second term is a flat 35%
+          penalty applied to EVERY region while the forecast median sits above
+          2.8 degC, the amplitude beyond which composites have no observational
+          grounding. That penalty is already included in the number shown --
+          it is not applied again downstream. So 0.52 here means "a reasonably
+          reliable teleconnection, discounted because no event this large has
+          ever been observed", not "a coin flip".
+      - key: hazards
+        label: Hazards
+        definition: >
+          The specific mechanisms expected in this region. Where a value looks
+          mild, the hazard list often carries the risk the average hides.

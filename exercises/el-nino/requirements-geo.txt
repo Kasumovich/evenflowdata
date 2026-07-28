@@ -1,0 +1,12 @@
+-r requirements.txt
+
+# Gridded / geospatial extras. Activating these switches the precipitation,
+# temperature and fire layers from composite-derived to model-derived, and the
+# dashboard drops the `composite` provenance badge accordingly.
+xarray>=2024.3
+netCDF4>=1.6
+dask>=2024.4
+geopandas>=1.0
+rasterio>=1.3
+cdsapi>=0.7
+zarr>=2.17

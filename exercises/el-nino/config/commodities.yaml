@@ -1,0 +1,263 @@
+# ---------------------------------------------------------------------------
+# Commodity registry. Drives the price-pressure layer, the market tables and
+# the yield-impact aggregation.
+#
+# ADD A COMMODITY: append a block and reference it from regions.yaml crops.
+# The engine discovers it automatically. No core code changes.
+# ---------------------------------------------------------------------------
+version: 3
+
+commodities:
+
+  maize:
+    label: Maize (corn)
+    group: grains
+    symbol_yahoo: "ZC=F"
+    symbol_pinksheet: "MAIZE"
+    exchange: CBOT
+    unit: "USc/bu"
+    contract_size: "5,000 bu"
+    stock_to_use: 0.281
+    top_producers: [USA, CHN, BRA, ARG, UKR]
+    baseline_1jul2026: null      # populated by first live market poll
+    notes: >
+      Northern-hemisphere-dominated, so the 2026-27 El Nino hits the 2027
+      South American safrinha and the 2027/28 US crop. Argentina's positive
+      response is a real offset.
+
+  wheat:
+    label: Wheat
+    group: grains
+    symbol_yahoo: "ZW=F"
+    symbol_pinksheet: "WHEAT_US_HRW"
+    exchange: CBOT
+    unit: "USc/bu"
+    contract_size: "5,000 bu"
+    stock_to_use: 0.334
+    top_producers: [CHN, IND, RUS, USA, AUS]
+    notes: >
+      Australian supply is the dominant El Nino channel; Black Sea supply
+      dominates the price level, which mutes the ENSO signal.
+
+  soybeans:
+    label: Soybeans
+    group: oilseeds
+    symbol_yahoo: "ZS=F"
+    symbol_pinksheet: "SOYBEANS"
+    exchange: CBOT
+    unit: "USc/bu"
+    contract_size: "5,000 bu"
+    stock_to_use: 0.252
+    top_producers: [BRA, USA, ARG, CHN, IND]
+    notes: >
+      Net El Nino response is ambiguous-to-positive: Argentina and southern
+      Brazil usually gain. Treat bearish-consensus scenarios seriously here.
+
+  soybean_oil:
+    label: Soybean oil
+    group: oilseeds
+    symbol_yahoo: "ZL=F"
+    symbol_pinksheet: "SOYBEAN_OIL"
+    exchange: CBOT
+    unit: "USc/lb"
+    stock_to_use: 0.121
+    top_producers: [CHN, USA, ARG, BRA]
+    substitute_for: palm_oil
+
+  palm_oil:
+    label: Crude palm oil
+    group: oilseeds
+    symbol_yahoo: null
+    symbol_bursa: "FCPO"
+    symbol_pinksheet: "PALM_OIL"
+    exchange: Bursa Malaysia
+    unit: "MYR/t"
+    stock_to_use: 0.148
+    top_producers: [IDN, MYS, THA, COL]
+    concentration_hhi: 0.62        # extreme supply concentration -> fat tail
+    lag_months: 9
+    notes: >
+      The cleanest El Nino trade in the complex: ~90% of supply sits inside the
+      strongest dry teleconnection on Earth, and the yield response lags rainfall
+      by 6-12 months. 2015-16 cost Malaysia ~2.4 Mt. Indonesia's B50 biodiesel
+      mandate removes further volume from export markets, compounding the shock.
+
+  rice:
+    label: Rice (Thai 5% broken)
+    group: rice
+    symbol_yahoo: "ZR=F"
+    symbol_pinksheet: "RICE_05"
+    exchange: CBOT / Thai FOB
+    unit: "USD/t"
+    stock_to_use: 0.361
+    top_producers: [CHN, IND, BGD, IDN, VNM]
+    thin_market: true
+    notes: >
+      Thinly traded relative to production (~10% of output crosses borders), so
+      policy shocks dominate weather shocks. A single Indian export restriction
+      has historically moved world prices more than a full monsoon failure.
+      This is why rice carries the widest scenario band on the dashboard.
+
+  coffee_arabica:
+    label: Coffee (arabica)
+    group: softs
+    symbol_yahoo: "KC=F"
+    symbol_pinksheet: "COFFEE_ARABICA"
+    exchange: ICE
+    unit: "USc/lb"
+    stock_to_use: 0.201
+    top_producers: [BRA, COL, ETH, HND, PER]
+    notes: >
+      Brazil sits on the wet/dry transition line -- the highest-variance
+      exposure on the board. Colombian and Central American drought is the
+      more reliable signal.
+
+  coffee_robusta:
+    label: Coffee (robusta)
+    group: softs
+    symbol_yahoo: null
+    symbol_ice: "RM"
+    symbol_pinksheet: "COFFEE_ROBUSTA"
+    exchange: ICE Europe
+    unit: "USD/t"
+    stock_to_use: 0.164
+    top_producers: [VNM, BRA, IDN, UGA]
+    concentration_hhi: 0.41
+    notes: >
+      Vietnam's Central Highlands plus Indonesia = the two strongest dry
+      teleconnections in the coffee world. Highest-conviction softs exposure.
+
+  cocoa:
+    label: Cocoa
+    group: softs
+    symbol_yahoo: "CC=F"
+    symbol_pinksheet: "COCOA"
+    exchange: ICE
+    unit: "USD/t"
+    stock_to_use: 0.312
+    top_producers: [CIV, GHA, IDN, ECU, NGA]
+    notes: >
+      Supply is concentrated in West Africa where the ENSO teleconnection is
+      weak and inconsistent. Included for completeness; confidence is low and
+      the dashboard says so.
+
+  sugar:
+    label: Sugar (raw No. 11)
+    group: softs
+    symbol_yahoo: "SB=F"
+    symbol_pinksheet: "SUGAR_WORLD"
+    exchange: ICE
+    unit: "USc/lb"
+    stock_to_use: 0.478
+    top_producers: [BRA, IND, THA, CHN, AUS]
+    notes: >
+      India and Thailand dry is the classic bullish channel; Brazilian
+      centre-south is the offset. Ethanol parity caps the downside.
+
+  fishmeal:
+    label: Fishmeal
+    group: proteins
+    # Routes through the fisheries chain in thresholds.yaml rather than the
+    # crop pipeline. Biomass -> quota -> landings -> meal -> price, with the
+    # biomass step modelled as saturating depletion.
+    transmission: fisheries
+    symbol_yahoo: null
+    symbol_pinksheet: "FISHMEAL"
+    exchange: OTC / Peru FOB
+    unit: "USD/t"
+    stock_to_use: null
+    top_producers: [PER, CHL, CHN]
+    concentration_hhi: 0.55
+    notes: >
+      The most El-Nino-elastic price in the entire food complex, and the only
+      one with no carryover stocks to absorb a shock. 1997-98 took Peruvian
+      anchoveta biomass from 5.8 Mt to 1.2 Mt and catch fell ~78%. The
+      elasticity of 2.0 is anchored, not assumed: a ~40% fall in global
+      fishmeal production coincided with an ~80% price rise to an all-time
+      high. Transmits into aquaculture and pork feed within a quarter.
+
+  wti_reference:
+    label: Crude oil (WTI, context only)
+    group: energy
+    symbol_yahoo: "CL=F"
+    symbol_pinksheet: "CRUDE_WTI"
+    exchange: NYMEX
+    unit: "USD/bbl"
+    context_only: true
+    notes: >
+      Not an El Nino play. Carried because it sets the biodiesel/ethanol floor
+      under vegetable oil and sugar, and because suppressed Atlantic hurricane
+      activity is a Gulf supply positive.
+
+  urea_reference:
+    label: Urea (fertiliser, context only)
+    group: inputs
+    symbol_pinksheet: "UREA_EE_BULK"
+    unit: "USD/t"
+    context_only: true
+    notes: >
+      Input-cost channel into the following season's planted area. Flagged
+      because fertiliser affordability is currently a bigger driver of the
+      2027 cereal balance than the ENSO signal itself in several regions.
+
+# ---------------------------------------------------------------------------
+# Share of GLOBAL production by country, used to roll country-level yield
+# responses up to a world production shock.
+#
+# This map exists because the first build got it wrong: it weighted each
+# country's response by that crop's share of the *country's own* agriculture,
+# which silently treated Malaysia and Indonesia as if they were the world.
+# The result was a modelled 27% global palm shortfall -- larger than any
+# production shock in the history of the crop. Global share is the correct
+# weight and this is it.
+#
+# Shares are approximate multi-year averages, rounded to the nearest percent.
+# They do not sum to 1: only the countries this system models appear, and the
+# uncovered remainder is reported as `coverage` in the commodity table so a
+# reader can see how much of world supply the shock estimate actually spans.
+# ---------------------------------------------------------------------------
+production_shares:
+  palm_oil:        {IDN: 0.59, MYS: 0.24, THA: 0.04, COL: 0.02, PNG: 0.01}
+  rice:            {CHN: 0.28, IND: 0.26, IDN: 0.07, VNM: 0.05, THA: 0.04,
+                    MMR: 0.03, PHL: 0.02, KHM: 0.02, BRA: 0.01, LKA: 0.01,
+                    PER: 0.01, ECU: 0.01, URY: 0.01, VEN: 0.01, USA: 0.01}
+  wheat:           {CHN: 0.17, IND: 0.14, USA: 0.06, AUS: 0.04, CAN: 0.04,
+                    PAK: 0.03, ARG: 0.02, ZAF: 0.01, CHL: 0.01, NZL: 0.01}
+  maize:           {USA: 0.31, CHN: 0.24, BRA: 0.11, ARG: 0.05, IND: 0.02,
+                    MEX: 0.02, ZAF: 0.02, PHL: 0.01, ETH: 0.01, ZMB: 0.01,
+                    MWI: 0.01, ZWE: 0.01, MOZ: 0.01, GTM: 0.01, HND: 0.01,
+                    NIC: 0.01, SLV: 0.01, VEN: 0.01, TZA: 0.01, KEN: 0.01,
+                    BWA: 0.01, GHA: 0.01, SOM: 0.01}
+  soybeans:        {BRA: 0.39, USA: 0.28, ARG: 0.13, CHN: 0.04, IND: 0.03,
+                    URY: 0.01, ZAF: 0.01, ZMB: 0.01}
+  soybean_oil:     {CHN: 0.28, USA: 0.20, ARG: 0.15, BRA: 0.15, IND: 0.05}
+  coffee_arabica:  {BRA: 0.45, COL: 0.13, ETH: 0.08, HND: 0.06, PER: 0.04,
+                    GTM: 0.03, MEX: 0.02, NIC: 0.02, IDN: 0.02, PNG: 0.01,
+                    TZA: 0.01, KEN: 0.01, SLV: 0.01, VNM: 0.01, CIV: 0.01}
+  coffee_robusta:  {VNM: 0.40, BRA: 0.24, IDN: 0.10, IND: 0.05, CIV: 0.02,
+                    PNG: 0.01, TZA: 0.01}
+  cocoa:           {CIV: 0.40, GHA: 0.16, IDN: 0.10, ECU: 0.09, BRA: 0.05,
+                    PNG: 0.01}
+  sugar:           {BRA: 0.22, IND: 0.20, THA: 0.06, CHN: 0.06, USA: 0.05,
+                    PAK: 0.04, MEX: 0.04, AUS: 0.03, PHL: 0.02, ZAF: 0.01,
+                    COL: 0.01, GTM: 0.01}
+  # PER + CHL + ECU = 0.32, matching the published "nearly a third of world
+  # fishmeal". China's share is largely rendering of imported raw material and
+  # domestic trash fish -- it does NOT respond to a Peruvian El Nino, and it is
+  # listed here only so the global denominator is honest. It contributes no
+  # sensitivity, so it no longer inflates `coverage` (see impact.py).
+  fishmeal:        {PER: 0.22, CHL: 0.06, ECU: 0.04, CHN: 0.20, THA: 0.03,
+                    USA: 0.03, VNM: 0.02}
+
+# Scenario bands applied to the price-pressure index. These are SCENARIOS,
+# not forecasts, and are rendered as such (dashed, with an explicit label).
+scenarios:
+  base:
+    label: "Base - composite teleconnection response"
+    intensity_multiplier: 1.00
+  severe:
+    label: "Severe - upper-decile ensemble member"
+    intensity_multiplier: 1.35
+  benign:
+    label: "Benign - lower-decile + Argentina offset"
+    intensity_multiplier: 0.55

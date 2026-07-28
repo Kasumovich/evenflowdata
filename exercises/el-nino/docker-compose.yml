@@ -1,0 +1,53 @@
+services:
+
+  dashboard:
+    build: .
+    image: enso-tracker:latest
+    ports: ["8501:8501"]
+    env_file: [.env]
+    volumes:
+      - store:/data
+      - ./output:/output
+      # Config is bind-mounted so thresholds, regions and commodities can be
+      # edited and reloaded without rebuilding the image. That is the whole
+      # point of the configuration-driven design.
+      - ./config:/app/config:ro
+    restart: unless-stopped
+
+  # Runs Steps A-F on the configured cadence. Shares the store and output
+  # volumes with the dashboard, so a completed run is visible immediately.
+  scheduler:
+    build: .
+    image: enso-tracker:latest
+    env_file: [.env]
+    volumes:
+      - store:/data
+      - ./output:/output
+      - ./config:/app/config:ro
+    command: ["python", "-m", "enso_tracker.scheduler"]
+    depends_on: [dashboard]
+    restart: unless-stopped
+
+  # Optional: Prefect server for run history, retries and a UI over the flows.
+  # `docker compose --profile orchestration up` to enable.
+  prefect:
+    image: prefecthq/prefect:3-latest
+    profiles: [orchestration]
+    command: ["prefect", "server", "start", "--host", "0.0.0.0"]
+    ports: ["4200:4200"]
+    volumes: [prefect:/root/.prefect]
+    restart: unless-stopped
+
+  # Optional: serve the static export behind a plain web server for the
+  # public-facing snapshot URL.
+  static:
+    image: nginx:alpine
+    profiles: [publish]
+    ports: ["8080:80"]
+    volumes:
+      - ./output:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+volumes:
+  store:
+  prefect:

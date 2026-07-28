@@ -1,0 +1,690 @@
+# ---------------------------------------------------------------------------
+# Region registry + teleconnection composites.
+#
+# Every entry is a *composite response calibrated on strong El Nino events*
+# (reference intensity ONI ~ 2.4 degC, i.e. the 1997-98 class). The impact
+# engine scales these by (event / reference) ** damping -- see thresholds.yaml.
+# It does NOT invent country data: the sign and rough magnitude of each
+# response come from the teleconnection literature and agency composites cited
+# in docs/DATA_DICTIONARY.md. Values are explicitly `provenance: composite`
+# and are shown as such in every dashboard hover card.
+#
+# precip_djf / precip_mam : % departure from 1991-2020 seasonal total
+# temp_djf                : degC departure from 1991-2020
+# fire_risk               : 0-1 index contribution before intensity scaling
+# confidence              : 0-1 prior on teleconnection reliability for this region
+#
+# ADD A COUNTRY: append a block. Nothing else changes.
+# ---------------------------------------------------------------------------
+version: 3
+
+pinned_by_default: [PER, IDN]
+
+# `dominant_signal` is the expected sign of the precipitation response, used
+# only for grouping and narrative ordering -- never for colour, which always
+# comes from the value itself via the diverging scale.
+groups:
+  andes_pacific:    { label: "Andean / Pacific South America", dominant_signal: mixed }
+  maritime_se_asia: { label: "Maritime Southeast Asia",        dominant_signal: dry }
+  oceania:          { label: "Australia / Pacific",            dominant_signal: dry }
+  southern_africa:  { label: "Southern Africa",                dominant_signal: dry }
+  east_africa:      { label: "Horn / East Africa",             dominant_signal: wet }
+  south_asia:       { label: "South Asia",                     dominant_signal: dry }
+  mainland_sea:     { label: "Mainland Southeast Asia",        dominant_signal: dry }
+  central_america:  { label: "Central America / Caribbean",    dominant_signal: dry }
+  north_america:    { label: "North America",                  dominant_signal: wet }
+  south_america_e:  { label: "Eastern South America",          dominant_signal: mixed }
+  west_africa:      { label: "West Africa",                    dominant_signal: mixed }
+
+countries:
+
+  - iso3: PER
+    name: Peru
+    group: andes_pacific
+    precip_djf: 95.0
+    precip_mam: 55.0
+    temp_djf: 1.4
+    fire_risk: 0.15
+    confidence: 0.86
+    hazards: [coastal_flooding, landslides, huaico, fishery_collapse, andean_drought]
+    notes: >
+      Dual-signed, and the national figure understates both halves. Coastal
+      north (Piura, Lambayeque, Tumbes) can see several times normal rainfall
+      -- 1997-98 delivered order-of-magnitude departures there -- while the
+      southern Andean altiplano dries, hitting potato and quinoa. The value
+      shown is a national DJF mean; read the coastal hazard, not the average.
+      Anchoveta biomass is the single most El-Nino-elastic commodity series
+      on the planet.
+    fisheries:
+      species: anchoveta
+      # Verified: 1997-98 (ONI 2.4, the reference intensity) took biomass from
+      # 5.8 Mt to 1.2 Mt. The previous -58 was an estimate; this is the
+      # observation. Scaled as a depletion process, not linearly -- see
+      # thresholds.yaml `fisheries`.
+      biomass_anom_pct: -79.0
+      biomass_anom_provenance: verified
+      biomass_anom_source: "ICES J. Mar. Sci., anchoveta phenological mismatch"
+      quota_risk: severe
+      ref_event_1997_98_catch_drop_pct: -78.0
+    crops:
+      rice:   { exposure: 0.30, sensitivity: -0.07 }
+      maize:  { exposure: 0.20, sensitivity: -0.163 }
+      coffee: { exposure: 0.15, sensitivity: -0.104 }
+      potato: { exposure: 0.35, sensitivity: -0.2 }
+
+  - iso3: IDN
+    name: Indonesia
+    group: maritime_se_asia
+    precip_djf: -32.0
+    precip_mam: -24.0
+    temp_djf: 1.1
+    fire_risk: 0.92
+    confidence: 0.91
+    hazards: [drought, peat_fire, transboundary_haze, rice_deficit, hydropower_shortfall]
+    notes: >
+      Strongest and most reliable dry teleconnection globally. Sumatra and
+      Kalimantan peat fires drive haze events; 2015-16 analogue burned ~2.6 Mha.
+      Palm oil yield response lags rainfall deficit by 6-12 months, so the
+      production hit lands mostly in 2027.
+    crops:
+      palm_oil: { exposure: 0.45, sensitivity: -0.076 }
+      rice:     { exposure: 0.30, sensitivity: -0.048 }
+      cocoa:    { exposure: 0.10, sensitivity: -0.045 }
+      coffee:   { exposure: 0.10, sensitivity: -0.11 }
+      rubber:   { exposure: 0.05, sensitivity: -0.05 }
+
+  - iso3: MYS
+    name: Malaysia
+    group: maritime_se_asia
+    precip_djf: -24.0
+    precip_mam: -20.0
+    temp_djf: 1.0
+    fire_risk: 0.71
+    confidence: 0.88
+    hazards: [drought, haze, palm_yield_loss]
+    crops:
+      palm_oil: { exposure: 0.70, sensitivity: -0.08 }
+      rubber:   { exposure: 0.20, sensitivity: -0.046 }
+      rice:     { exposure: 0.10, sensitivity: -0.041 }
+
+  - iso3: PHL
+    name: Philippines
+    group: maritime_se_asia
+    precip_djf: -26.0
+    precip_mam: -30.0
+    temp_djf: 1.0
+    fire_risk: 0.44
+    confidence: 0.84
+    hazards: [drought, water_stress, reduced_typhoon_landfall, rice_deficit]
+    crops:
+      rice:    { exposure: 0.45, sensitivity: -0.057 }
+      maize:   { exposure: 0.25, sensitivity: -0.181 }
+      coconut: { exposure: 0.20, sensitivity: -0.06 }
+      sugar:   { exposure: 0.10, sensitivity: -0.087 }
+
+  - iso3: PNG
+    name: Papua New Guinea
+    group: maritime_se_asia
+    precip_djf: -30.0
+    precip_mam: -22.0
+    temp_djf: 0.9
+    fire_risk: 0.55
+    confidence: 0.79
+    hazards: [drought, frost_highlands, food_insecurity]
+    crops:
+      coffee:   { exposure: 0.35, sensitivity: -0.115 }
+      palm_oil: { exposure: 0.30, sensitivity: -0.072 }
+      cocoa:    { exposure: 0.35, sensitivity: -0.05 }
+
+  - iso3: AUS
+    name: Australia
+    group: oceania
+    precip_djf: -22.0
+    precip_mam: -18.0
+    temp_djf: 1.3
+    fire_risk: 0.83
+    confidence: 0.80
+    hazards: [drought, bushfire, heatwave, wheat_belt_failure]
+    notes: >
+      Eastern and northern Australia dry. Wheat belt response is concentrated in
+      the Sep-Nov grain fill window, so the 2026-27 hit shows up in the
+      2026-27 harvest already, ahead of the SST peak.
+    crops:
+      wheat:  { exposure: 0.45, sensitivity: -0.18 }
+      barley: { exposure: 0.20, sensitivity: -0.18 }
+      canola: { exposure: 0.15, sensitivity: -0.2 }
+      sugar:  { exposure: 0.10, sensitivity: -0.071 }
+      beef:   { exposure: 0.10, sensitivity: -0.083 }
+
+  - iso3: NZL
+    name: New Zealand
+    group: oceania
+    precip_djf: -8.0
+    precip_mam: -6.0
+    temp_djf: 0.3
+    fire_risk: 0.30
+    confidence: 0.55
+    hazards: [east_coast_drought]
+    crops:
+      dairy: { exposure: 0.70, sensitivity: -0.06 }
+      wheat: { exposure: 0.30, sensitivity: -0.053 }
+
+  - iso3: ZAF
+    name: South Africa
+    group: southern_africa
+    precip_djf: -26.0
+    precip_mam: -14.0
+    temp_djf: 1.5
+    fire_risk: 0.61
+    confidence: 0.82
+    hazards: [maize_belt_drought, heatwave, load_shedding]
+    crops:
+      maize:     { exposure: 0.50, sensitivity: -0.244 }
+      soybeans:  { exposure: 0.20, sensitivity: -0.16 }
+      sugar:     { exposure: 0.15, sensitivity: -0.082 }
+      wheat:     { exposure: 0.15, sensitivity: -0.09 }
+
+  - iso3: ZWE
+    name: Zimbabwe
+    group: southern_africa
+    precip_djf: -30.0
+    precip_mam: -18.0
+    temp_djf: 1.5
+    fire_risk: 0.58
+    confidence: 0.80
+    hazards: [maize_failure, ipc_deterioration, livestock_loss]
+    crops:
+      maize:   { exposure: 0.70, sensitivity: -0.28 }
+      tobacco: { exposure: 0.20, sensitivity: -0.114 }
+      cotton:  { exposure: 0.10, sensitivity: -0.12 }
+
+  - iso3: ZMB
+    name: Zambia
+    group: southern_africa
+    precip_djf: -24.0
+    precip_mam: -14.0
+    temp_djf: 1.3
+    fire_risk: 0.52
+    confidence: 0.78
+    hazards: [maize_failure, hydropower_shortfall]
+    crops:
+      maize: { exposure: 0.80, sensitivity: -0.253 }
+      soybeans: { exposure: 0.20, sensitivity: -0.153 }
+
+  - iso3: MWI
+    name: Malawi
+    group: southern_africa
+    precip_djf: -26.0
+    precip_mam: -16.0
+    temp_djf: 1.3
+    fire_risk: 0.45
+    confidence: 0.77
+    hazards: [maize_failure, acute_food_insecurity]
+    crops:
+      maize:   { exposure: 0.75, sensitivity: -0.271 }
+      tobacco: { exposure: 0.25, sensitivity: -0.12 }
+
+  - iso3: MOZ
+    name: Mozambique
+    group: southern_africa
+    precip_djf: -22.0
+    precip_mam: -12.0
+    temp_djf: 1.2
+    fire_risk: 0.48
+    confidence: 0.72
+    hazards: [drought_south, cyclone_variability]
+    crops:
+      maize:   { exposure: 0.60, sensitivity: -0.235 }
+      cassava: { exposure: 0.40, sensitivity: -0.093 }
+
+  - iso3: BWA
+    name: Botswana
+    group: southern_africa
+    precip_djf: -28.0
+    precip_mam: -16.0
+    temp_djf: 1.6
+    fire_risk: 0.55
+    confidence: 0.74
+    hazards: [drought, livestock_loss]
+    crops:
+      maize: { exposure: 0.50, sensitivity: -0.271 }
+      beef:  { exposure: 0.50, sensitivity: -0.1 }
+
+  - iso3: KEN
+    name: Kenya
+    group: east_africa
+    precip_djf: 55.0
+    precip_mam: 20.0
+    temp_djf: 0.7
+    fire_risk: 0.20
+    confidence: 0.81
+    hazards: [short_rains_flooding, landslides, rift_valley_fever, locust_risk]
+    notes: >
+      Oct-Dec short rains enhanced. Net effect on maize is positive-to-neutral;
+      the dominant risks are flood displacement and vector-borne disease.
+      Tea and coffee quality can suffer from excess moisture.
+    crops:
+      maize:  { exposure: 0.45, sensitivity: 0.081 }
+      tea:    { exposure: 0.30, sensitivity: -0.032 }
+      coffee: { exposure: 0.25, sensitivity: -0.052 }
+
+  - iso3: ETH
+    name: Ethiopia
+    group: east_africa
+    precip_djf: 22.0
+    precip_mam: 10.0
+    temp_djf: 0.8
+    fire_risk: 0.28
+    confidence: 0.70
+    hazards: [kiremt_deficit, belg_variability, food_insecurity]
+    notes: >
+      Split signal: Jun-Sep kiremt rains suppressed (main crop), Oct-Dec
+      enhanced. The kiremt deficit dominates the cereal balance.
+      Arabica coffee origin risk is material.
+    crops:
+      coffee:  { exposure: 0.35, sensitivity: -0.094 }
+      teff:    { exposure: 0.35, sensitivity: -0.14 }
+      maize:   { exposure: 0.30, sensitivity: -0.126 }
+
+  - iso3: SOM
+    name: Somalia
+    group: east_africa
+    precip_djf: 60.0
+    precip_mam: 18.0
+    temp_djf: 0.7
+    fire_risk: 0.15
+    confidence: 0.75
+    hazards: [flash_flooding, displacement, ipc_deterioration]
+    crops:
+      sorghum: { exposure: 0.60, sensitivity: 0.1 }
+      maize:   { exposure: 0.40, sensitivity: 0.036 }
+
+  - iso3: TZA
+    name: Tanzania
+    group: east_africa
+    precip_djf: 35.0
+    precip_mam: 12.0
+    temp_djf: 0.7
+    fire_risk: 0.25
+    confidence: 0.68
+    hazards: [flooding_north, drought_south]
+    crops:
+      maize:  { exposure: 0.50, sensitivity: 0.027 }
+      coffee: { exposure: 0.25, sensitivity: -0.047 }
+      cashew: { exposure: 0.25, sensitivity: -0.06 }
+
+  - iso3: IND
+    name: India
+    group: south_asia
+    precip_djf: -10.0
+    precip_mam: -12.0
+    temp_djf: 1.1
+    fire_risk: 0.40
+    confidence: 0.76
+    hazards: [monsoon_deficit, heatwave, reservoir_depletion, export_bans]
+    notes: >
+      The critical window is the JJAS southwest monsoon of 2027, i.e. AFTER the
+      SST peak, when El Nino decay-year monsoons are historically weakest.
+      Indian rice export policy is the largest single swing factor in the
+      global rice price complex.
+    crops:
+      rice:      { exposure: 0.35, sensitivity: -0.045 }
+      wheat:     { exposure: 0.25, sensitivity: -0.083 }
+      sugar:     { exposure: 0.20, sensitivity: -0.093 }
+      soybeans:  { exposure: 0.10, sensitivity: -0.138 }
+      cotton:    { exposure: 0.10, sensitivity: -0.096 }
+
+  - iso3: PAK
+    name: Pakistan
+    group: south_asia
+    precip_djf: 12.0
+    precip_mam: 8.0
+    temp_djf: 1.0
+    fire_risk: 0.30
+    confidence: 0.58
+    hazards: [monsoon_variability, heat_stress]
+    crops:
+      wheat:  { exposure: 0.45, sensitivity: -0.075 }
+      rice:   { exposure: 0.30, sensitivity: -0.029 }
+      cotton: { exposure: 0.25, sensitivity: -0.084 }
+
+  - iso3: THA
+    name: Thailand
+    group: mainland_sea
+    precip_djf: -20.0
+    precip_mam: -22.0
+    temp_djf: 1.1
+    fire_risk: 0.62
+    confidence: 0.80
+    hazards: [drought, irrigation_shortfall, haze_north]
+    crops:
+      rice:   { exposure: 0.40, sensitivity: -0.054 }
+      sugar:  { exposure: 0.25, sensitivity: -0.12 }
+      rubber: { exposure: 0.20, sensitivity: -0.05 }
+      cassava: { exposure: 0.15, sensitivity: -0.1 }
+
+  - iso3: VNM
+    name: Vietnam
+    group: mainland_sea
+    precip_djf: -18.0
+    precip_mam: -20.0
+    temp_djf: 1.0
+    fire_risk: 0.48
+    confidence: 0.78
+    hazards: [mekong_low_flow, salinity_intrusion, coffee_drought]
+    notes: >
+      Central Highlands robusta is the exposure that matters most for world
+      coffee. Mekong Delta salinity intrusion compounds the rice signal.
+    crops:
+      coffee: { exposure: 0.40, sensitivity: -0.12 }
+      rice:   { exposure: 0.40, sensitivity: -0.048 }
+      rubber: { exposure: 0.20, sensitivity: -0.046 }
+
+  - iso3: KHM
+    name: Cambodia
+    group: mainland_sea
+    precip_djf: -18.0
+    precip_mam: -20.0
+    temp_djf: 1.0
+    fire_risk: 0.45
+    confidence: 0.70
+    hazards: [tonle_sap_low_water, rice_deficit]
+    crops:
+      rice: { exposure: 0.80, sensitivity: -0.051 }
+      cassava: { exposure: 0.20, sensitivity: -0.087 }
+
+  - iso3: MMR
+    name: Myanmar
+    group: mainland_sea
+    precip_djf: -16.0
+    precip_mam: -18.0
+    temp_djf: 1.0
+    fire_risk: 0.50
+    confidence: 0.62
+    hazards: [drought, rice_export_disruption]
+    crops:
+      rice:   { exposure: 0.65, sensitivity: -0.048 }
+      pulses: { exposure: 0.35, sensitivity: -0.12 }
+
+  - iso3: LKA
+    name: Sri Lanka
+    group: south_asia
+    precip_djf: 30.0
+    precip_mam: 10.0
+    temp_djf: 0.7
+    fire_risk: 0.20
+    confidence: 0.66
+    hazards: [flooding, tea_quality_loss]
+    crops:
+      tea:  { exposure: 0.55, sensitivity: -0.05 }
+      rice: { exposure: 0.45, sensitivity: 0.013 }
+
+  - iso3: BRA
+    name: Brazil
+    group: south_america_e
+    precip_djf: -14.0
+    precip_mam: -10.0
+    temp_djf: 1.2
+    fire_risk: 0.86
+    confidence: 0.72
+    hazards: [amazon_drought, northeast_drought, southern_flooding, record_fire_season]
+    notes: >
+      Strongly dipolar. North and northeast dry (Amazon drought, record fire
+      risk peaking H2 2027); south (Rio Grande do Sul, Parana) wet, which helps
+      soy but raises harvest-quality and logistics risk. Arabica in Minas
+      Gerais sits near the transition line -- the highest-variance call on the
+      board.
+    crops:
+      soybeans: { exposure: 0.35, sensitivity: 0.044 }
+      maize:    { exposure: 0.20, sensitivity: -0.081 }
+      coffee:   { exposure: 0.25, sensitivity: -0.083 }
+      sugar:    { exposure: 0.20, sensitivity: -0.044 }
+
+  - iso3: ARG
+    name: Argentina
+    group: south_america_e
+    precip_djf: 28.0
+    precip_mam: 14.0
+    temp_djf: 0.4
+    fire_risk: 0.25
+    confidence: 0.79
+    hazards: [flooding_pampas, logistics_disruption]
+    notes: >
+      Historically the clearest El Nino *beneficiary* in row crops. Wetter
+      pampas typically lifts soy and maize yields, partially offsetting losses
+      elsewhere. This is the main reason a global grain price shock is not a
+      foregone conclusion.
+    crops:
+      soybeans: { exposure: 0.40, sensitivity: 0.095 }
+      maize:    { exposure: 0.35, sensitivity: 0.108 }
+      wheat:    { exposure: 0.25, sensitivity: 0.038 }
+
+  - iso3: URY
+    name: Uruguay
+    group: south_america_e
+    precip_djf: 30.0
+    precip_mam: 15.0
+    temp_djf: 0.3
+    fire_risk: 0.20
+    confidence: 0.74
+    hazards: [flooding]
+    crops:
+      soybeans: { exposure: 0.60, sensitivity: 0.087 }
+      rice:     { exposure: 0.40, sensitivity: 0.025 }
+
+  - iso3: ECU
+    name: Ecuador
+    group: andes_pacific
+    precip_djf: 75.0
+    precip_mam: 45.0
+    temp_djf: 1.2
+    fire_risk: 0.15
+    confidence: 0.85
+    hazards: [coastal_flooding, landslides, banana_disease_pressure, fishery_disruption]
+    fisheries:
+      species: anchoveta_sardine
+      # Same eastern Pacific warm-water displacement as Peru but weaker: the
+      # Ecuadorian shelf is warmer at baseline, so the thermal anomaly is a
+      # smaller departure from what the stock already tolerates.
+      biomass_anom_pct: -45.0
+      biomass_anom_provenance: composite
+      quota_risk: elevated
+    crops:
+      banana: { exposure: 0.40, sensitivity: -0.06 }
+      cocoa:  { exposure: 0.35, sensitivity: -0.032 }
+      rice:   { exposure: 0.25, sensitivity: -0.051 }
+
+  - iso3: COL
+    name: Colombia
+    group: andes_pacific
+    precip_djf: -24.0
+    precip_mam: -16.0
+    temp_djf: 1.1
+    fire_risk: 0.55
+    confidence: 0.80
+    hazards: [drought, hydropower_shortfall, coffee_stress]
+    crops:
+      coffee: { exposure: 0.55, sensitivity: -0.099 }
+      rice:   { exposure: 0.25, sensitivity: -0.045 }
+      banana: { exposure: 0.20, sensitivity: -0.047 }
+
+  - iso3: VEN
+    name: Venezuela
+    group: andes_pacific
+    precip_djf: -22.0
+    precip_mam: -15.0
+    temp_djf: 1.2
+    fire_risk: 0.60
+    confidence: 0.68
+    hazards: [drought, hydropower_shortfall]
+    crops:
+      maize: { exposure: 0.60, sensitivity: -0.163 }
+      rice:  { exposure: 0.40, sensitivity: -0.048 }
+
+  - iso3: CHL
+    name: Chile
+    group: andes_pacific
+    precip_djf: 25.0
+    precip_mam: 30.0
+    temp_djf: 0.6
+    fire_risk: 0.40
+    confidence: 0.73
+    hazards: [central_flooding, fishery_disruption]
+    fisheries:
+      species: jack_mackerel_anchoveta
+      biomass_anom_pct: -34.0
+      biomass_anom_provenance: composite
+      quota_risk: elevated
+    crops:
+      grapes: { exposure: 0.45, sensitivity: -0.06 }
+      wheat:  { exposure: 0.30, sensitivity: 0.03 }
+      fruit:  { exposure: 0.25, sensitivity: -0.05 }
+
+  - iso3: GTM
+    name: Guatemala
+    group: central_america
+    precip_djf: -20.0
+    precip_mam: -26.0
+    temp_djf: 1.1
+    fire_risk: 0.63
+    confidence: 0.79
+    hazards: [dry_corridor_drought, food_insecurity, migration_pressure]
+    crops:
+      maize:  { exposure: 0.45, sensitivity: -0.217 }
+      coffee: { exposure: 0.35, sensitivity: -0.094 }
+      beans:  { exposure: 0.20, sensitivity: -0.192 }
+
+  - iso3: HND
+    name: Honduras
+    group: central_america
+    precip_djf: -22.0
+    precip_mam: -28.0
+    temp_djf: 1.1
+    fire_risk: 0.65
+    confidence: 0.79
+    hazards: [dry_corridor_drought, coffee_rust, food_insecurity]
+    crops:
+      coffee: { exposure: 0.45, sensitivity: -0.104 }
+      maize:  { exposure: 0.35, sensitivity: -0.226 }
+      beans:  { exposure: 0.20, sensitivity: -0.2 }
+
+  - iso3: NIC
+    name: Nicaragua
+    group: central_america
+    precip_djf: -20.0
+    precip_mam: -24.0
+    temp_djf: 1.0
+    fire_risk: 0.58
+    confidence: 0.76
+    hazards: [dry_corridor_drought]
+    crops:
+      coffee: { exposure: 0.40, sensitivity: -0.099 }
+      maize:  { exposure: 0.35, sensitivity: -0.208 }
+      beans:  { exposure: 0.25, sensitivity: -0.183 }
+
+  - iso3: SLV
+    name: El Salvador
+    group: central_america
+    precip_djf: -20.0
+    precip_mam: -25.0
+    temp_djf: 1.1
+    fire_risk: 0.55
+    confidence: 0.75
+    hazards: [dry_corridor_drought, food_insecurity]
+    crops:
+      maize:  { exposure: 0.50, sensitivity: -0.217 }
+      coffee: { exposure: 0.30, sensitivity: -0.094 }
+      beans:  { exposure: 0.20, sensitivity: -0.183 }
+
+  - iso3: MEX
+    name: Mexico
+    group: central_america
+    precip_djf: 30.0
+    precip_mam: 10.0
+    temp_djf: 0.6
+    fire_risk: 0.42
+    confidence: 0.71
+    hazards: [north_wet_south_dry, reservoir_recovery]
+    crops:
+      maize:  { exposure: 0.55, sensitivity: 0.036 }
+      wheat:  { exposure: 0.25, sensitivity: 0.045 }
+      sugar:  { exposure: 0.20, sensitivity: -0.044 }
+
+  - iso3: USA
+    name: United States
+    group: north_america
+    precip_djf: 26.0
+    precip_mam: 8.0
+    temp_djf: 0.5
+    fire_risk: 0.35
+    confidence: 0.83
+    hazards: [southern_tier_flooding, california_atmospheric_rivers, suppressed_atlantic_hurricanes, northern_warmth]
+    notes: >
+      Wet southern tier (California to Florida), warm and dry north. Winter
+      wheat in the southern Plains typically benefits. Suppressed Atlantic
+      hurricane activity is a meaningful positive for Gulf energy and
+      agricultural logistics.
+    crops:
+      maize:     { exposure: 0.35, sensitivity: 0.018 }
+      soybeans:  { exposure: 0.30, sensitivity: 0.015 }
+      wheat:     { exposure: 0.20, sensitivity: 0.053 }
+      cotton:    { exposure: 0.15, sensitivity: 0.03 }
+
+  - iso3: CAN
+    name: Canada
+    group: north_america
+    precip_djf: -8.0
+    precip_mam: -4.0
+    temp_djf: 1.6
+    fire_risk: 0.58
+    confidence: 0.69
+    hazards: [warm_dry_winter, early_fire_season]
+    crops:
+      wheat:  { exposure: 0.50, sensitivity: -0.045 }
+      canola: { exposure: 0.50, sensitivity: -0.064 }
+
+  - iso3: CIV
+    name: Cote d'Ivoire
+    group: west_africa
+    precip_djf: -8.0
+    precip_mam: -6.0
+    temp_djf: 0.8
+    fire_risk: 0.42
+    confidence: 0.48
+    hazards: [harmattan_intensity, cocoa_stress]
+    notes: >
+      West African cocoa has a weak and inconsistent ENSO teleconnection --
+      confidence is deliberately low. Harmattan intensity is the transmission
+      channel most often cited, but the composite barely clears noise.
+    crops:
+      cocoa:  { exposure: 0.75, sensitivity: -0.024 }
+      coffee: { exposure: 0.15, sensitivity: -0.042 }
+      rubber: { exposure: 0.10, sensitivity: -0.025 }
+
+  - iso3: GHA
+    name: Ghana
+    group: west_africa
+    precip_djf: -8.0
+    precip_mam: -6.0
+    temp_djf: 0.8
+    fire_risk: 0.44
+    confidence: 0.46
+    hazards: [harmattan_intensity, cocoa_stress]
+    crops:
+      cocoa: { exposure: 0.85, sensitivity: -0.024 }
+      maize: { exposure: 0.15, sensitivity: -0.09 }
+
+  - iso3: CHN
+    name: China
+    group: south_asia
+    precip_djf: 12.0
+    precip_mam: 14.0
+    temp_djf: 0.7
+    fire_risk: 0.25
+    confidence: 0.60
+    hazards: [yangtze_flooding, north_china_drought]
+    crops:
+      rice:     { exposure: 0.35, sensitivity: -0.016 }
+      maize:    { exposure: 0.30, sensitivity: -0.054 }
+      wheat:    { exposure: 0.25, sensitivity: -0.03 }
+      soybeans: { exposure: 0.10, sensitivity: -0.036 }
