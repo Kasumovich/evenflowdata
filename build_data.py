@@ -348,7 +348,7 @@ def main():
     ap.add_argument("--books-start", type=int, default=1970,
                     help="first year for real ingestion (>=1996 Fed archive; 1970-1995 Minneapolis Fed)")
     ap.add_argument("--end", type=int, default=dt.date.today().year)
-    ap.add_argument("--out", default="site/data.js")
+    ap.add_argument("--out", default="site/beige-book/data.js")
     args = ap.parse_args()
 
     extras = {}
