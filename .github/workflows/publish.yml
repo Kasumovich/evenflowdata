@@ -79,48 +79,59 @@ jobs:
       # v1 asked only "did any source go live?". Three did, so the first real
       # run passed -- and shipped a dashboard whose Nino 3.4 reading was six
       # years old, because the two sources that actually drive the headline
-      # were not among the three. A count is not a check. The gate now names
-      # the sources it cannot publish without, and checks their age rather
-      # than their existence: a live feed serving 2020 data is a failure that
-      # a liveness count scores as a success.
+      # were not among the three. A count is not a check.
+      #
+      # v2 checked the age of those two sources instead, and was wrong in the
+      # other direction: CPC's own ONI table can sit months behind its normal
+      # cadence while the connector reads it perfectly. An age limit alone
+      # cannot tell "we could not reach the source" from "we reached it and
+      # this is genuinely the newest season it has published" -- and only the
+      # first of those is a reason to withhold the page.
+      #
+      # So the gate asks both questions separately:
+      #   1. did we read each headline dataset from its primary source?
+      #      -- if not, we are publishing a snapshot dressed as a tracker.
+      #   2. is what that source served absurdly old?
+      #      -- catches the frozen-file case (2,274 days) without punishing a
+      #         slow-but-working publisher. Normal lateness is the dashboard's
+      #         stale-observation alert to report, not the gate's to block.
       - name: Gate on live data
         if: ${{ github.event.inputs.allow_seeded != 'true' }}
         run: |
           python - <<'PY'
-          import json, sys, yaml
+          import json, sys
 
-          # The datasets the headline is made of. Everything else can be
-          # seeded, dormant or missing and the dashboard still says something
-          # true; without these two it does not.
           CRITICAL = ["oni_observed", "weekly_nino"]
+          ABSURD_DAYS = 365     # no primary climate feed is legitimately this stale
 
-          limits = yaml.safe_load(open("config/thresholds.yaml"))["alerts"]["observation_age_h"]
           p = json.load(open("output/dashboard_payload.json"))
-          meta, ages = p["meta"], p["meta"].get("observation_age_h", {})
+          meta = p["meta"]
+          ages = meta.get("observation_age_h", {})
+          prov = meta.get("dataset_provenance", {})
 
           print(f"live={meta['sources_live']} seeded={meta['sources_seeded']} "
                 f"dormant={meta['sources_dormant']} failed={meta['sources_failed']}")
 
           problems = []
           for dataset in CRITICAL:
-              # Same thresholds the in-dashboard alarm uses. Duplicating the
-              # numbers here would let the gate and the dashboard disagree
-              # about what "too old" means.
-              spec = limits.get(dataset) or limits["default"]
-              cap = float(spec["critical"])
+              tier = str(prov.get(dataset, "missing"))
               age = ages.get(dataset)
-              if age is None:
-                  problems.append(f"{dataset}: no observation date at all")
-              elif age > cap:
+              shown = "unknown age" if age is None else f"{age/24:.0f} days old"
+
+              if not tier.startswith("live"):
                   problems.append(
-                      f"{dataset}: newest observation is {age/24:.0f} days old "
-                      f"(critical limit {cap/24:.0f} days)"
+                      f"{dataset}: not read from its primary source this run "
+                      f"(served from {tier}, {shown})"
+                  )
+              elif age is None:
+                  problems.append(f"{dataset}: live but will not state an observation date")
+              elif age > ABSURD_DAYS * 24:
+                  problems.append(
+                      f"{dataset}: primary source answered but served data {age/24:.0f} "
+                      f"days old -- almost certainly a frozen file"
                   )
               else:
-                  print(f"OK  {dataset}: {age/24:.1f} days old (limit {cap/24:.0f})")
-
-          if meta["sources_live"] == 0:
-              problems.append("no source went live at all")
+                  print(f"OK  {dataset}: {tier}, {shown}")
 
           if problems:
               sys.exit(
@@ -129,6 +140,14 @@ jobs:
                   + "\n\nFix the source, or re-run with allow_seeded=true to publish "
                     "deliberately with these known gaps."
               )
+
+          # Age that is merely bad, not absurd, is reported and published --
+          # the dashboard raises its own stale-observation alert for it.
+          for dataset in CRITICAL:
+              age = ages.get(dataset)
+              if age and age / 24 > 90:
+                  print(f"NOTE {dataset} is {age/24:.0f} days old. Publishing with "
+                        f"the stale-observation alert raised.")
           PY
 
       - name: Stage into site/
