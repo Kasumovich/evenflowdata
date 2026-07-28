@@ -23,9 +23,14 @@ climate:
   cpc_oni:
     connector: cpc_oni
     auth: none
-    # 'origin.cpc...' does not resolve -- it was a guess and it cost us the
-    # single most important source on its first live run.
-    url: https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php
+    # Two wrong URLs in a row for this one source. 'origin.cpc...' did not
+    # resolve at all. ONI_v5.php resolves, returns 200, and is the *wide*
+    # layout (one row per year, twelve season columns) while the parser expects
+    # the long one -- so it failed with '0 usable rows', which reads like a
+    # dead source rather than a mismatched shape. oni.ascii.txt is the long
+    # SEAS/YR/TOTAL/ANOM form the parser was written for, and carries the
+    # absolute SST as well as the anomaly.
+    url: https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt
     cadence: "0 15 * * 4"          # CPC updates monthly, Thursday release window
     description: Oceanic Nino Index, ERSSTv5, 3-month running mean, era-specific climatology
     units: degC
