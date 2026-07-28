@@ -78,60 +78,82 @@ jobs:
       #
       # v1 asked only "did any source go live?". Three did, so the first real
       # run passed -- and shipped a dashboard whose Nino 3.4 reading was six
-      # years old, because the two sources that actually drive the headline
-      # were not among the three. A count is not a check.
+      # years old, because the two sources that drive the headline were not
+      # among the three. A count is not a check.
       #
-      # v2 checked the age of those two sources instead, and was wrong in the
-      # other direction: CPC's own ONI table can sit months behind its normal
-      # cadence while the connector reads it perfectly. An age limit alone
-      # cannot tell "we could not reach the source" from "we reached it and
-      # this is genuinely the newest season it has published" -- and only the
-      # first of those is a reason to withhold the page.
+      # v2 checked the age of those two instead, and was wrong the other way:
+      # CPC's own ONI table can sit months behind its normal cadence while the
+      # connector reads it perfectly. Age alone cannot tell "we could not reach
+      # the source" from "we reached it, and this is genuinely the newest
+      # season it has published" -- and only the first is a reason to withhold
+      # the page.
       #
       # So the gate asks both questions separately:
-      #   1. did we read each headline dataset from its primary source?
+      #   1. was each headline dataset read from its primary source?
       #      -- if not, we are publishing a snapshot dressed as a tracker.
       #   2. is what that source served absurdly old?
       #      -- catches the frozen-file case (2,274 days) without punishing a
-      #         slow-but-working publisher. Normal lateness is the dashboard's
+      #         slow-but-working publisher. Ordinary lateness is the dashboard's
       #         stale-observation alert to report, not the gate's to block.
+      #
+      # It reads provenance from whichever field the running pipeline exposes,
+      # so it behaves identically before and after the pipeline change lands.
+      # Half-applied updates have cost us two runs already.
       - name: Gate on live data
         if: ${{ github.event.inputs.allow_seeded != 'true' }}
         run: |
           python - <<'PY'
-          import json, sys
+          import json, sys, yaml
 
           CRITICAL = ["oni_observed", "weekly_nino"]
+          STATE_KEY = {"oni_observed": "oni", "weekly_nino": "weekly"}
           ABSURD_DAYS = 365     # no primary climate feed is legitimately this stale
 
+          limits = yaml.safe_load(open("config/thresholds.yaml"))["alerts"]["observation_age_h"]
           p = json.load(open("output/dashboard_payload.json"))
-          meta = p["meta"]
+          meta, state = p["meta"], p["state"]
           ages = meta.get("observation_age_h", {})
-          prov = meta.get("dataset_provenance", {})
+
+          def tier(dataset):
+              """Prefer the per-dataset map; fall back to the state block, which
+              every version of the pipeline has emitted."""
+              direct = meta.get("dataset_provenance", {}).get(dataset)
+              if direct:
+                  return str(direct)
+              return str(state.get("provenance", {}).get(STATE_KEY[dataset], "missing"))
 
           print(f"live={meta['sources_live']} seeded={meta['sources_seeded']} "
                 f"dormant={meta['sources_dormant']} failed={meta['sources_failed']}")
 
-          problems = []
+          problems, notes = [], []
           for dataset in CRITICAL:
-              tier = str(prov.get(dataset, "missing"))
-              age = ages.get(dataset)
+              t, age = tier(dataset), ages.get(dataset)
               shown = "unknown age" if age is None else f"{age/24:.0f} days old"
 
-              if not tier.startswith("live"):
+              if not t.startswith("live"):
                   problems.append(
                       f"{dataset}: not read from its primary source this run "
-                      f"(served from {tier}, {shown})"
+                      f"(served from {t}, {shown})"
                   )
-              elif age is None:
+                  continue
+              if age is None:
                   problems.append(f"{dataset}: live but will not state an observation date")
-              elif age > ABSURD_DAYS * 24:
+                  continue
+              if age > ABSURD_DAYS * 24:
                   problems.append(
-                      f"{dataset}: primary source answered but served data {age/24:.0f} "
-                      f"days old -- almost certainly a frozen file"
+                      f"{dataset}: primary source answered but served data "
+                      f"{age/24:.0f} days old -- almost certainly a frozen file"
                   )
-              else:
-                  print(f"OK  {dataset}: {tier}, {shown}")
+                  continue
+
+              print(f"OK  {dataset}: {t}, {shown}")
+              # Merely late, not absurd: publish it and say so. Same limits the
+              # in-dashboard alarm uses, so the gate and the page cannot
+              # disagree about what counts as stale.
+              spec = limits.get(dataset) or limits["default"]
+              if spec and age > float(spec["critical"]):
+                  notes.append(f"{dataset} is {age/24:.0f} days old, past its "
+                               f"{float(spec['critical'])/24:.0f}-day critical limit")
 
           if problems:
               sys.exit(
@@ -141,13 +163,8 @@ jobs:
                     "deliberately with these known gaps."
               )
 
-          # Age that is merely bad, not absurd, is reported and published --
-          # the dashboard raises its own stale-observation alert for it.
-          for dataset in CRITICAL:
-              age = ages.get(dataset)
-              if age and age / 24 > 90:
-                  print(f"NOTE {dataset} is {age/24:.0f} days old. Publishing with "
-                        f"the stale-observation alert raised.")
+          for n in notes:
+              print(f"NOTE {n}. Publishing with the stale-observation alert raised.")
           PY
 
       - name: Stage into site/
