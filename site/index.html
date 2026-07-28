@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evenflow Alternative Data</title>
+<meta name="description" content="Alternative data exercises: converting non-market signals into quantitative, point-in-time series that never revise.">
+<style>
+/* Same design system as the El Nino tracker, so the two read as one property.
+   The palette was machine-validated for colourblind separation and contrast in
+   both modes -- see config/styles.yaml in the tracker repo. */
+:root{
+  color-scheme: light;
+  --bg:#f9f9f7; --surface:#fcfcfb; --surface-alt:#f0efec;
+  --border:rgba(11,11,11,0.10);
+  --ink:#0b0b0b; --ink-2:#52514e; --ink-muted:#898781;
+  --accent:#eb6834; --link:#2a78d6; --good:#0ca30c;
+  --shadow:0 1px 2px rgba(11,11,11,.05), 0 8px 24px rgba(11,11,11,.04);
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0d0d0d; --surface:#1a1a19; --surface-alt:#232322;
+  --border:rgba(255,255,255,0.10);
+  --ink:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
+  --accent:#d95926; --link:#3987e5; --good:#0ca30c;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--link)}
+.wrap{max-width:940px;margin:0 auto;padding:34px 22px 90px}
+
+header.top{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:20px;flex-wrap:wrap;margin-bottom:34px}
+.brand{font-size:1.5rem;font-weight:660;letter-spacing:-.02em;margin:0}
+.brand span{color:var(--ink-2);font-weight:450}
+.tagline{color:var(--ink-2);font-size:.92rem;margin:5px 0 0;max-width:60ch}
+button{
+  font:inherit;font-size:.82rem;color:var(--ink);background:var(--surface);
+  border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;
+}
+button:hover{background:var(--surface-alt)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+
+/* ---- the house method: the thing that makes these a series ---- */
+.method{
+  background:var(--surface);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:12px;
+  padding:18px 20px;margin-bottom:30px;box-shadow:var(--shadow);
+}
+.method h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--ink-2);margin:0 0 9px;font-weight:640}
+.method p{margin:0 0 10px;font-size:.92rem;max-width:78ch}
+.method p:last-child{margin-bottom:0}
+/* Explicit 2x2 -- an auto-fit grid reflowed to 3+1, which reads as three
+   rules and an afterthought rather than four of equal weight. */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px;margin-top:16px}
+@media (max-width:560px){.rules{grid-template-columns:1fr;gap:14px}}
+.rule{font-size:.83rem}
+.rule b{display:block;color:var(--ink);font-size:.85rem;margin-bottom:2px}
+.rule span{color:var(--ink-2)}
+
+/* ---- exercise cards ---- */
+h2.sec{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--ink-2);margin:0 0 12px;font-weight:640}
+.cards{display:grid;gap:16px}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;box-shadow:var(--shadow);
+  transition:border-color .15s ease, transform .15s ease;
+}
+.card:hover{border-color:var(--ink-muted)}
+@media (prefers-reduced-motion:no-preference){.card:hover{transform:translateY(-1px)}}
+.card .no{font-size:.72rem;color:var(--ink-muted);letter-spacing:.08em;
+  text-transform:uppercase;font-weight:640}
+.card h3{margin:5px 0 3px;font-size:1.18rem;letter-spacing:-.015em;font-weight:640}
+.card h3 a{color:var(--ink);text-decoration:none}
+.card h3 a:hover{color:var(--link)}
+.card .conv{color:var(--ink-2);font-size:.88rem;margin:0 0 12px;max-width:72ch}
+.card .conv em{color:var(--ink);font-style:normal;font-weight:600}
+.facts{display:flex;gap:20px;flex-wrap:wrap;padding:12px 0;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:13px}
+.fact .v{font-size:1.28rem;font-weight:650;letter-spacing:-.02em;line-height:1.1}
+.fact .k{font-size:.72rem;color:var(--ink-2);text-transform:uppercase;
+  letter-spacing:.05em;font-weight:600;margin-top:2px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tag{font-size:.71rem;border:1px solid var(--border);border-radius:999px;
+  padding:2px 9px;color:var(--ink-2)}
+.go{display:inline-flex;align-items:center;gap:6px;font-size:.87rem;
+  font-weight:600;text-decoration:none}
+.go:hover{text-decoration:underline}
+
+footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
+  color:var(--ink-muted);font-size:.79rem;line-height:1.6}
+footer a{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <h1 class="brand">Evenflow <span>Alternative Data</span></h1>
+    <p class="tagline">
+      Alternative data exercises. Each one takes a signal that is not a market
+      price and turns it into a series you can actually test against one.
+    </p>
+  </div>
+  <button id="themeBtn" type="button" aria-label="Toggle colour theme">Dark mode</button>
+</header>
+
+<section class="method">
+  <h2>House method</h2>
+  <p>
+    Every exercise here follows the same four rules. They are the reason these
+    are comparable to each other, and the reason a number published on this site
+    means the same thing next year as it does today.
+  </p>
+  <div class="rules">
+    <div class="rule">
+      <b>Point-in-time</b>
+      <span>Scores are stamped when computed and never revised. What you see is
+      what was knowable on that date.</span>
+    </div>
+    <div class="rule">
+      <b>Provenance on every figure</b>
+      <span>Each value is labelled by how it was obtained &mdash; read from a
+      primary source, cached, or modelled. The tiers are never blurred.</span>
+    </div>
+    <div class="rule">
+      <b>Stated limits</b>
+      <span>Where a method is extrapolating beyond its calibration, the output
+      says so and discounts itself accordingly.</span>
+    </div>
+    <div class="rule">
+      <b>Full history, downloadable</b>
+      <span>Complete series as CSV or JSON. No sign-up, no partial extracts.</span>
+    </div>
+  </div>
+</section>
+
+<h2 class="sec">Exercises</h2>
+<div class="cards">
+
+  <article class="card">
+    <div class="no">Exercise 01</div>
+    <h3><a href="./beige-book/">Beige Book Alt-Data Screen</a></h3>
+    <p class="conv">
+      Converts <em>qualitative Federal Reserve survey text</em> into a
+      quantitative macro regime signal &mdash; recession probability and
+      inflation forecasts, scored district by district.
+    </p>
+    <div class="facts">
+      <div class="fact"><div class="v">~440</div><div class="k">Books scored</div></div>
+      <div class="fact"><div class="v">1970&ndash;</div><div class="k">Coverage</div></div>
+      <div class="fact"><div class="v">8&times;/yr</div><div class="k">Cadence</div></div>
+      <div class="fact"><div class="v">12</div><div class="k">Districts</div></div>
+    </div>
+    <div class="tags">
+      <span class="tag">Text scoring</span>
+      <span class="tag">Lough&shy;ran&ndash;McDonald</span>
+      <span class="tag">Adjective ladder</span>
+      <span class="tag">Logistic regression</span>
+      <span class="tag">Backtested</span>
+    </div>
+    <a class="go" href="./beige-book/">Open the screen &rarr;</a>
+  </article>
+
+  <article class="card">
+    <div class="no">Exercise 02</div>
+    <h3><a href="./el-nino/">El Ni&ntilde;o 2026&ndash;27 Tracker</a></h3>
+    <p class="conv">
+      Converts a <em>physical climate forecast</em> into commodity supply and
+      price pressure &mdash; a global-production-weighted shock across 13
+      commodities and 41 regions, refreshed twice daily.
+    </p>
+    <div class="facts">
+      <div class="fact"><div class="v">3.6&nbsp;&deg;C</div><div class="k">Forecast peak</div></div>
+      <div class="fact"><div class="v">667</div><div class="k">Ensemble members</div></div>
+      <div class="fact"><div class="v">41</div><div class="k">Regions</div></div>
+      <div class="fact"><div class="v">31</div><div class="k">Sources</div></div>
+    </div>
+    <div class="tags">
+      <span class="tag">Teleconnection composites</span>
+      <span class="tag">Price elasticity</span>
+      <span class="tag">Fisheries depletion</span>
+      <span class="tag">Not backtested</span>
+    </div>
+    <a class="go" href="./el-nino/">Open the tracker &rarr;</a>
+  </article>
+
+
+</div>
+
+<footer>
+  <p>
+    <b>These are research exercises, not investment advice.</b> Exercise 02
+    publishes scenario output from a structural model, not a fitted signal.
+    Where it extrapolates beyond the range its inputs were calibrated on, it
+    labels the output and discounts its own confidence. Read the
+    method notes on each page before using a number.
+  </p>
+  <p id="stamp"></p>
+</footer>
+
+</div>
+
+<script>
+const btn = document.getElementById("themeBtn");
+function setTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  btn.textContent = mode === "dark" ? "Light mode" : "Dark mode";
+}
+btn.onclick = () => setTheme(
+  document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"
+);
+setTheme(window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+/* Reads the tracker's own payload so the hub cannot drift out of date with the
+   thing it links to. Fails silently -- a stale card is better than a broken page. */
+fetch("./el-nino/payload.json")
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(p => {
+    const s = p.state, m = p.meta;
+    const facts = document.querySelectorAll(".cards article:nth-child(2) .fact .v");
+    if (facts[0]) facts[0].textContent = s.peak_median.toFixed(1) + " °C";
+    if (facts[1]) facts[1].textContent = p.ensemble.n_members;
+    const stamp = document.getElementById("stamp");
+    stamp.textContent = "Tracker last refreshed "
+      + String(m.generated_utc).slice(0, 16).replace("T", " ") + " UTC · run " + m.run_id;
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
