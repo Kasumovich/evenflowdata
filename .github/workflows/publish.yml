@@ -74,21 +74,60 @@ jobs:
           ENSO_ALERT_WEBHOOK: ${{ secrets.ENSO_ALERT_WEBHOOK }}
         run: enso-tracker all --in-docs --no-pdf
 
-      # Publish gate. A dashboard reading "Sources live: 0" is honest but reads
-      # as broken to a first-time visitor. Block rather than ship it.
+      # Publish gate.
+      #
+      # v1 asked only "did any source go live?". Three did, so the first real
+      # run passed -- and shipped a dashboard whose Nino 3.4 reading was six
+      # years old, because the two sources that actually drive the headline
+      # were not among the three. A count is not a check. The gate now names
+      # the sources it cannot publish without, and checks their age rather
+      # than their existence: a live feed serving 2020 data is a failure that
+      # a liveness count scores as a success.
       - name: Gate on live data
         if: ${{ github.event.inputs.allow_seeded != 'true' }}
         run: |
           python - <<'PY'
-          import json, sys
-          meta = json.load(open("output/dashboard_payload.json"))["meta"]
-          live = meta["sources_live"]
-          print(f"live={live} seeded={meta['sources_seeded']} "
+          import json, sys, yaml
+
+          # The datasets the headline is made of. Everything else can be
+          # seeded, dormant or missing and the dashboard still says something
+          # true; without these two it does not.
+          CRITICAL = ["oni_observed", "weekly_nino"]
+
+          limits = yaml.safe_load(open("config/thresholds.yaml"))["alerts"]["observation_age_h"]
+          p = json.load(open("output/dashboard_payload.json"))
+          meta, ages = p["meta"], p["meta"].get("observation_age_h", {})
+
+          print(f"live={meta['sources_live']} seeded={meta['sources_seeded']} "
                 f"dormant={meta['sources_dormant']} failed={meta['sources_failed']}")
-          if live == 0:
+
+          problems = []
+          for dataset in CRITICAL:
+              # Same thresholds the in-dashboard alarm uses. Duplicating the
+              # numbers here would let the gate and the dashboard disagree
+              # about what "too old" means.
+              spec = limits.get(dataset) or limits["default"]
+              cap = float(spec["critical"])
+              age = ages.get(dataset)
+              if age is None:
+                  problems.append(f"{dataset}: no observation date at all")
+              elif age > cap:
+                  problems.append(
+                      f"{dataset}: newest observation is {age/24:.0f} days old "
+                      f"(critical limit {cap/24:.0f} days)"
+                  )
+              else:
+                  print(f"OK  {dataset}: {age/24:.1f} days old (limit {cap/24:.0f})")
+
+          if meta["sources_live"] == 0:
+              problems.append("no source went live at all")
+
+          if problems:
               sys.exit(
-                  "No source went live -- refusing to publish a seed-only dashboard.\n"
-                  "Re-run with allow_seeded=true to override deliberately."
+                  "Refusing to publish. The tracker's headline cannot be trusted:\n  - "
+                  + "\n  - ".join(problems)
+                  + "\n\nFix the source, or re-run with allow_seeded=true to publish "
+                    "deliberately with these known gaps."
               )
           PY
 
