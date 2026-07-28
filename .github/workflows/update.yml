@@ -40,12 +40,12 @@ jobs:
       - name: Build data
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python -u build_data.py --${{ github.event.inputs.mode }} --out site/data.js
+        run: python -u build_data.py --${{ github.event.inputs.mode }} --out site/beige-book/data.js
 
       - name: Commit if changed
         run: |
           git config user.name "beigebook-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add site/data.js
+          git add site/beige-book/data.js
           git diff --cached --quiet && echo "no change" || \
             (git commit -m "data: ${{ github.event.inputs.mode }} refresh" && git push)
