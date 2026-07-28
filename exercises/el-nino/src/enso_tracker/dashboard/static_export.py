@@ -690,7 +690,10 @@ function renderGauge(){
     + `<b>${m.sub}</b>${m.label}</div>`).join("");
 
   $("#gaugeCap").innerHTML =
-    `Current status from the <abbr title="NOAA Climate Prediction Center">CPC</abbr> (NOAA Climate Prediction Center): <b>${esc(S.alert_status)}</b>. Band labels are printed, so colour is redundant encoding rather than the information channel. `
+    `Current status from the <abbr title="NOAA Climate Prediction Center">CPC</abbr> (NOAA Climate Prediction Center): <b>${esc(S.alert_status)}</b>`
+    + (((S.provenance||{}).advisory === "carried_forward")
+        ? ` <span style="color:var(--ink-muted)">(last issued advisory, carried forward &mdash; the <abbr title="NOAA Climate Prediction Center">CPC</abbr> issues it monthly in the ENSO Diagnostic Discussion, separately from the weekly sea-surface temperature file)</span>` : "")
+    + `. Band labels are printed, so colour is redundant encoding rather than the information channel. `
     + `The record marker is the ${S.record_to_beat_monthly}&nbsp;&deg;C monthly ERSSTv5 peak from 2015&ndash;16; the seasonal ONI peak of that event was ${S.record_to_beat_oni}&nbsp;&deg;C.`;
 }
 

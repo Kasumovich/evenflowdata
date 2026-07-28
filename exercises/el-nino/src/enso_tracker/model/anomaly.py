@@ -103,6 +103,7 @@ def build_event_state(
     ensemble: dict[str, Any],
     today: date | None = None,
     provenance: dict[str, str] | None = None,
+    alert_status_fallback: str | None = None,
 ) -> EventState:
     today = today or datetime.now(timezone.utc).date()
 
@@ -110,12 +111,29 @@ def build_event_state(
     current_oni = float(latest["oni"])
     current_season = f"{latest['season']} {int(latest['year'])}"
 
+    # The CPC advisory (El Nino Watch / El Nino Advisory / Final Advisory) is
+    # issued in the monthly ENSO Diagnostic Discussion, not in the weekly SST
+    # file. So a live weekly feed carries temperatures but no advisory, and the
+    # first live run degraded the header to "Unknown" -- real data making the
+    # dashboard say *less* than the snapshot it replaced. Carry the last known
+    # advisory forward instead, and label it as carried forward so the
+    # distinction between "CPC says this today" and "CPC said this, and we
+    # have not heard since" survives into the UI.
     weekly_value = None
     alert_status = "unknown"
+    advisory_source = "absent"
     if weekly_df is not None and not weekly_df.empty:
         row = weekly_df.iloc[-1]
         weekly_value = float(row["nino34"]) if "nino34" in row else None
-        alert_status = str(row.get("alert_status", "unknown"))
+        raw_status = row.get("alert_status") if "alert_status" in row else None
+        if raw_status is not None and str(raw_status).strip().lower() not in {
+            "", "nan", "none", "unknown",
+        }:
+            alert_status = str(raw_status).strip()
+            advisory_source = "weekly_feed"
+    if alert_status == "unknown" and alert_status_fallback:
+        alert_status = str(alert_status_fallback).strip()
+        advisory_source = "carried_forward"
 
     peak_median = float(ensemble["peak_median_degC"])
     peak_p10 = float(ensemble["peak_p10_degC"])
@@ -140,6 +158,9 @@ def build_event_state(
     penalty = float(cfg.thresholds["impact_model"]["confidence_penalty_above_warning"])
     confidence_multiplier = (1.0 - penalty) if extrapolating else 1.0
 
+    prov = dict(provenance or {})
+    prov["advisory"] = advisory_source
+
     return EventState(
         as_of=str(today),
         current_oni=current_oni,
@@ -160,7 +181,7 @@ def build_event_state(
         record_to_beat_monthly=record_monthly,
         extrapolation_warning=extrapolating,
         confidence_multiplier=confidence_multiplier,
-        provenance=provenance or {},
+        provenance=prov,
     )
 
 

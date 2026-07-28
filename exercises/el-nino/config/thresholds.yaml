@@ -46,11 +46,18 @@ alerts:
   # value served from the seed snapshot reported 0 h and the alarm was
   # structurally incapable of firing. `null` marks a reference series that
   # does not age.
+  #
+  # The ONI limits deserve their arithmetic written down, because they are the
+  # publish gate as well as the alarm. An ONI season is a 3-month mean stamped
+  # at its centre month, and CPC releases it in the first half of the month
+  # after the season closes. So a perfectly healthy feed read on 3 August shows
+  # AMJ, centred 15 May: 80 days old. 1800 h (75 d) sat below that and would
+  # have failed a working source once a month.
   observation_age_h:
     default:            {warn: 720,  critical: 2160}   # 30 d / 90 d
-    oni_observed:       {warn: 1080, critical: 1800}   # monthly release + lag
+    oni_observed:       {warn: 1440, critical: 2160}   # 60 d / 90 d; healthy peak is ~80 d
     weekly_nino:        {warn: 240,  critical: 504}    # weekly product
-    nino34_monthly:     {warn: 1080, critical: 1800}
+    nino34_monthly:     {warn: 1440, critical: 2160}
     ensemble_plume:     {warn: 1080, critical: 1800}   # monthly initialisation
     market_baseline:    {warn: 120,  critical: 336}    # trading days
     futures_prices:     {warn: 96,   critical: 240}

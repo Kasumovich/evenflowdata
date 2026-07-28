@@ -23,7 +23,9 @@ climate:
   cpc_oni:
     connector: cpc_oni
     auth: none
-    url: https://origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php
+    # 'origin.cpc...' does not resolve -- it was a guess and it cost us the
+    # single most important source on its first live run.
+    url: https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_v5.php
     cadence: "0 15 * * 4"          # CPC updates monthly, Thursday release window
     description: Oceanic Nino Index, ERSSTv5, 3-month running mean, era-specific climatology
     units: degC
@@ -32,7 +34,11 @@ climate:
   cpc_weekly_nino:
     connector: cpc_weekly
     auth: none
-    url: https://www.cpc.ncep.noaa.gov/data/indices/wksst8110.for
+    # wksst8110.for is the OLD 1981-2010 base-period file. CPC froze it when it
+    # moved to the 1991-2020 climatology, so it kept serving happily and kept
+    # returning 2020 data. Caught by the observation-age alarm, not by the
+    # connector -- which is why that alarm exists.
+    url: https://www.cpc.ncep.noaa.gov/data/indices/wksst9120.for
     cadence: "0 18 * * 1"          # weekly, Monday
     description: Weekly Nino 1+2 / 3 / 3.4 / 4 SST and anomalies
     units: degC

@@ -117,6 +117,9 @@ class RunMetrics:
     #: Conflating the two produced an alert claiming the CPC feeds were
     #: "not connected" when they simply had not been tried.
     skipped_offline: list[str] = field(default_factory=list)
+    #: Sources that answered but returned data older than what we already had.
+    #: A feed can be perfectly reachable and still be dead.
+    stale_live_sources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -231,30 +234,79 @@ def step_a_ingest(
         if qc.passed:
             metrics.sources_live += 1
             history[name] = datetime.now(timezone.utc).isoformat()
-            collected[result.dataset] = result.frame
+            collected[result.dataset] = result
         else:
             record_failure(name, f"{name}: failed QC ({'; '.join(qc.flags[:2])})")
 
     # Resolve every dataset the model needs, degrading gracefully.
+    #
+    # Freshness decides, not provenance. An earlier build preferred live data
+    # unconditionally, and the first real run showed why that is wrong: the CPC
+    # weekly connector pointed at a file CPC froze in 2020, answered promptly,
+    # and its six-year-old values displaced a 47-day-old seed. "Live" is a
+    # statement about where a number came from, not about whether it is current.
+    def _age_hours(valid_time: str | None) -> float | None:
+        if not valid_time:
+            return None
+        try:
+            when = datetime.fromisoformat(str(valid_time))
+        except ValueError:
+            return None
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        return max((datetime.now(timezone.utc) - when).total_seconds() / 3600.0, 0.0)
+
     resolved: dict[str, Any] = {}
     for dataset, loader in seedmod.SEED_LOADERS.items():
-        if dataset in collected:
-            resolved[dataset] = {"frame": collected[dataset], "provenance": "live"}
-            continue
+        candidates: list[dict[str, Any]] = []
+
+        live = collected.get(dataset)
+        if live is not None:
+            candidates.append({
+                "frame": live.frame, "provenance": "live",
+                "age": _age_hours(live.valid_time), "label": "live",
+            })
+
         cached = store.latest(dataset)
         if cached is not None and cached[1].provenance == "live":
-            resolved[dataset] = {"frame": cached[0], "provenance": "cached"}
-            metrics.notes.append(f"{dataset}: serving last-good (stale)")
-            continue
+            candidates.append({
+                "frame": cached[0], "provenance": "cached",
+                "age": _age_hours(cached[1].valid_time), "label": "last-good",
+            })
+
         seeded = loader()
-        store.write(
-            seeded.dataset, seeded.frame, source=seeded.source,
-            source_url=seeded.source_url, provenance=seeded.provenance,
-            qc_passed=True, stale=True,
-            valid_time=seeded.valid_time, reference_series=seeded.reference_series,
-        )
-        resolved[dataset] = {"frame": seeded.frame, "provenance": seeded.provenance}
-        metrics.sources_seeded += 1
+        candidates.append({
+            "frame": seeded.frame, "provenance": seeded.provenance,
+            "age": _age_hours(seeded.valid_time), "label": "seed",
+            "_seed": seeded,
+        })
+
+        # Unknown age sorts last: a candidate that will not say how old it is
+        # must not win against one that will.
+        ranked = sorted(candidates, key=lambda c: (c["age"] is None, c["age"] or 0.0))
+        best = ranked[0]
+
+        if best["label"] != "live" and live is not None:
+            live_age = next(c["age"] for c in candidates if c["label"] == "live")
+            metrics.notes.append(
+                f"{dataset}: live data rejected as staler than {best['label']} "
+                f"({(live_age or 0)/24:.0f} d vs {(best['age'] or 0)/24:.0f} d)"
+            )
+            metrics.stale_live_sources.append(dataset)
+
+        if best["label"] == "seed":
+            seeded = best["_seed"]
+            store.write(
+                seeded.dataset, seeded.frame, source=seeded.source,
+                source_url=seeded.source_url, provenance=seeded.provenance,
+                qc_passed=True, stale=True,
+                valid_time=seeded.valid_time, reference_series=seeded.reference_series,
+            )
+            metrics.sources_seeded += 1
+        elif best["label"] == "last-good":
+            metrics.notes.append(f"{dataset}: serving last-good (stale)")
+
+        resolved[dataset] = {"frame": best["frame"], "provenance": best["provenance"]}
 
     for dataset in resolved:
         hours = store.staleness_hours(dataset)
@@ -281,8 +333,18 @@ def step_b_recompute(
 
     weekly = resolved.get("weekly_nino", {}).get("frame")
 
+    # Last known CPC advisory, from the bundled snapshot. Used only when the
+    # resolved weekly frame carries no advisory of its own -- which is the
+    # normal case once the live SST feed wins, since CPC publishes the advisory
+    # separately from the weekly file.
+    try:
+        advisory_fallback = seedmod.weekly_nino().frame.iloc[-1].get("alert_status")
+    except Exception:  # noqa: BLE001 -- a missing snapshot must not stop a run
+        advisory_fallback = None
+
     state = build_event_state(
         cfg, oni_df=oni, weekly_df=weekly, ensemble=ensemble,
+        alert_status_fallback=advisory_fallback,
         provenance={
             "oni": resolved["oni_observed"]["provenance"],
             "weekly": resolved.get("weekly_nino", {}).get("provenance", "absent"),

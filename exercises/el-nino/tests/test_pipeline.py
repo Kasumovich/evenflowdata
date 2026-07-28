@@ -539,3 +539,166 @@ def test_fisheries_countries_survive_json_serialisation(tmp_path):
     assert peru["fisheries"] is not None and peru["fisheries_landings"] is not None
     assert peru["fisheries_species"] == "anchoveta"
     assert zwe["fisheries"] is None
+
+
+# ---------------------------------------------------------------------------
+# Regressions from the first live GitHub Actions run
+#
+# That run went green and published a worse dashboard than the bundled
+# snapshot: a live CPC feed pointed at a file frozen in 2020, its six-year-old
+# values displaced a 47-day-old seed, the CPC advisory read "Unknown", and the
+# Pink Sheet mapped none of its columns. Four separate faults, one green tick.
+# ---------------------------------------------------------------------------
+
+def test_cpc_urls_are_the_current_ones():
+    """Both CPC URLs were wrong in different ways, and both were invisible.
+
+    The ONI hostname was a guess that did not resolve. The weekly file was the
+    1981-2010 base-period file, which CPC froze rather than retired -- so it
+    answered 200 OK forever with 2020 data.
+    """
+    cfg = get_config()
+    climate = cfg.sources["climate"]
+    assert "origin.cpc" not in climate["cpc_oni"]["url"]
+    assert climate["cpc_oni"]["url"].startswith("https://www.cpc.ncep.noaa.gov/")
+    assert "wksst8110" not in climate["cpc_weekly_nino"]["url"]
+    assert "wksst9120" in climate["cpc_weekly_nino"]["url"]
+
+
+def test_advisory_survives_a_live_weekly_feed_that_has_no_advisory_column(cfg):
+    """CPC issues the advisory monthly, separately from the weekly SST file.
+
+    So a live weekly feed carries temperatures and no advisory. Before this
+    fix, promoting that feed over the seed degraded the header from
+    'El Nino Advisory' to 'Unknown' -- real data making the dashboard say less.
+    """
+    oni = seedmod.oni_observed().frame
+    ensemble = seedmod.ensemble_summary()
+    live_weekly = pd.DataFrame([{
+        "week_ending": pd.Timestamp("2026-07-22"),
+        "nino12": 2.4, "nino3": 2.2, "nino34": 2.1, "nino4": 1.3,
+    }])
+
+    state = build_event_state(
+        cfg, oni_df=oni, weekly_df=live_weekly, ensemble=ensemble,
+        alert_status_fallback="El Nino Advisory",
+    )
+    assert state.alert_status == "El Nino Advisory"
+    assert state.provenance["advisory"] == "carried_forward"
+
+
+def test_a_real_advisory_in_the_feed_beats_the_fallback(cfg):
+    oni = seedmod.oni_observed().frame
+    weekly = pd.DataFrame([{
+        "week_ending": pd.Timestamp("2026-07-22"), "nino34": 2.1,
+        "alert_status": "Final El Nino Advisory",
+    }])
+    state = build_event_state(
+        cfg, oni_df=oni, weekly_df=weekly, ensemble=seedmod.ensemble_summary(),
+        alert_status_fallback="El Nino Advisory",
+    )
+    assert state.alert_status == "Final El Nino Advisory"
+    assert state.provenance["advisory"] == "weekly_feed"
+
+
+def test_pinksheet_reconciles_the_workbooks_real_column_labels():
+    """The workbook says 'Crude oil, WTI'; commodities.yaml says 'CRUDE_WTI'.
+
+    Exact-match alone mapped nothing and reported '100% missing', which is true
+    and useless. Resolution now goes exact -> alias -> token-subset, and
+    refuses ambiguity rather than guessing.
+    """
+    from enso_tracker.connectors.markets import PinkSheetConnector as PS
+
+    cfg = get_config()
+    conn = PS("worldbank_pinksheet", cfg.sources["markets"]["worldbank_pinksheet"], cfg)
+    wanted = conn._lookup()
+
+    assert conn._resolve("Maize", wanted) == "maize"              # exact
+    assert conn._resolve("Crude oil, WTI", wanted) == "wti_reference"  # token subset
+    assert conn._resolve("Urea, E. Europe, bulk", wanted) == "urea_reference"  # alias
+    assert conn._resolve("Rice, Thai 5%", wanted) == "rice"        # alias
+    assert conn._resolve("Bananas, Europe", wanted) is None        # not modelled
+
+
+def test_pinksheet_header_is_found_rather_than_assumed(tmp_path):
+    """A fixed header=[0,1] met a title banner and produced 'Unnamed: 3_level_0'.
+
+    The header is now located by finding the first YYYYMmm row, which works
+    whether the banner is there or not.
+    """
+    from enso_tracker.connectors.markets import PinkSheetConnector as PS
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = PS.SHEET
+    ws.append(["World Bank Commodity Price Data (The Pink Sheet)"])
+    ws.append([])
+    ws.append([None, "Maize", "Crude oil, WTI", "Bananas, Europe"])
+    ws.append([None, "($/mt)", "($/bbl)", "($/kg)"])
+    ws.append(["2026M05", 210.0, 71.2, 1.1])
+    ws.append(["2026M06", 214.5, 69.8, 1.2])
+    path = tmp_path / "pink.xlsx"
+    wb.save(path)
+
+    cfg = get_config()
+    conn = PS("worldbank_pinksheet", cfg.sources["markets"]["worldbank_pinksheet"], cfg)
+    long, seen = conn._parse(path.read_bytes())
+
+    assert seen == ["Bananas, Europe", "Crude oil, WTI", "Maize"]
+    assert not any("Unnamed" in s for s in seen)
+    assert len(long) == 6
+
+
+def test_pinksheet_failure_names_the_columns_it_actually_saw(tmp_path):
+    """This connector cannot be reached from the sandbox, so its error message
+    is the only debugging channel it has. It must carry the evidence."""
+    from enso_tracker.connectors.base import SourceUnavailable
+    from enso_tracker.connectors.markets import PinkSheetConnector as PS
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = PS.SHEET
+    ws.append([None, "Bananas, Europe", "Shrimp, Mexican"])
+    ws.append(["2026M06", 1.2, 14.0])
+    path = tmp_path / "pink.xlsx"
+    wb.save(path)
+
+    cfg = get_config()
+    conn = PS("worldbank_pinksheet", cfg.sources["markets"]["worldbank_pinksheet"], cfg)
+    long, seen = conn._parse(path.read_bytes())
+    wanted = conn._lookup()
+    assert all(conn._resolve(s, wanted) is None for s in seen)
+
+    # and the message the operator would receive
+    with pytest.raises(SourceUnavailable) as err:
+        raise SourceUnavailable(
+            f"parsed {len(seen)} price columns but none matched.\n"
+            f"  workbook labels: {', '.join(seen)}"
+        )
+    assert "Bananas, Europe" in str(err.value)
+
+
+def test_publish_gate_names_critical_sources_not_just_a_count():
+    """The gate that passed the bad run asked 'did any source go live?'.
+
+    Three had, so it passed. None of the three was the headline.
+    """
+    import re
+    from pathlib import Path
+
+    gate = Path(".github/workflows/publish.yml").read_text()
+    assert 'CRITICAL = ["oni_observed", "weekly_nino"]' in gate
+    assert "observation_age_h" in gate
+    # and it must not re-declare limits the dashboard already owns
+    assert re.search(r'yaml\.safe_load\(open\("config/thresholds\.yaml"\)\)', gate)
+
+
+def test_oni_age_limit_accommodates_a_healthy_monthly_release(cfg):
+    """An ONI season is centred on its middle month and released a month after
+    the season closes, so a healthy feed peaks around 80 days old. A 75-day
+    critical limit would have failed a working source every month."""
+    critical_h = cfg.thresholds["alerts"]["observation_age_h"]["oni_observed"]["critical"]
+    assert critical_h / 24 >= 85
