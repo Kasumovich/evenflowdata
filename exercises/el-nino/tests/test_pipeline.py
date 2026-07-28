@@ -36,7 +36,10 @@ def cfg():
 def test_config_loads_and_validates(cfg):
     assert len(cfg.country_list) > 30
     assert len(cfg.commodity_index) > 10
-    assert len(cfg.source_blocks()) > 25
+    # Was >25 when the registry carried eleven stub connectors pointed at
+    # human-readable web pages. Those were removed rather than left to fail
+    # forever; the bound tracks sources we actually intend to poll.
+    assert len(cfg.source_blocks()) >= 20
  
  
 def test_every_source_has_a_registered_connector(cfg):
@@ -703,9 +706,19 @@ def test_publish_gate_names_critical_sources_not_just_a_count():
         pytest.skip("workflow not present in this checkout")
     gate = (gate_path / ".github/workflows/publish.yml").read_text()
     assert 'CRITICAL = ["oni_observed", "weekly_nino"]' in gate
+    # It must ask both questions. Age alone was the second wrong answer: CPC's
+    # ONI table can run months behind while the connector reads it perfectly,
+    # and an age-only gate withholds the page for the publisher's lateness.
     assert "observation_age_h" in gate
-    # and it must not re-declare limits the dashboard already owns
+    assert re.search(r'startswith\("live"\)', gate)
+    assert "ABSURD_DAYS" in gate
+    # Limits come from the config the dashboard alarm already uses, so the two
+    # cannot disagree about what "too old" means.
     assert re.search(r'yaml\.safe_load\(open\("config/thresholds\.yaml"\)\)', gate)
+    # And it must read provenance from either field, so that a partially
+    # applied update behaves the same as a complete one. Three runs were lost
+    # to a repo that was half old and half new.
+    assert "dataset_provenance" in gate and "STATE_KEY" in gate
  
  
 def test_oni_age_limit_accommodates_a_healthy_monthly_release(cfg):
@@ -714,3 +727,62 @@ def test_oni_age_limit_accommodates_a_healthy_monthly_release(cfg):
     critical limit would have failed a working source every month."""
     critical_h = cfg.thresholds["alerts"]["observation_age_h"]["oni_observed"]["critical"]
     assert critical_h / 24 >= 85
+ 
+ 
+def test_payload_states_which_tier_each_dataset_came_from(tmp_path):
+    """The gate cannot work off age alone, so the payload has to say where
+    each headline dataset was actually resolved from."""
+    result = run(offline=True, out=tmp_path)
+    prov = result.payload["meta"]["dataset_provenance"]
+    assert set(prov) >= {"oni_observed", "weekly_nino"}
+    # offline, everything is necessarily a snapshot -- and must say so
+    assert all(str(v).startswith("seed:") for v in prov.values())
+ 
+ 
+def test_oni_connector_reads_both_cpc_layouts():
+    """CPC publishes the ONI twice: oni.ascii.txt in long form, ONI_v5.php in
+    wide form. The parser was written for the long one and pointed at the wide
+    one, so it rejected every row and reported '0 usable rows' -- which reads
+    as a dead source rather than a mismatched shape."""
+    from enso_tracker.connectors.climate import CPCOniConnector
+ 
+    cfg = get_config()
+    conn = CPCOniConnector("cpc_oni", cfg.sources["climate"]["cpc_oni"], cfg)
+ 
+    long_rows, _ = conn._parse_long(
+        " SEAS  YR   TOTAL   ANOM\n"
+        "  DJF 1950  24.72  -1.53\n"
+        "  FMA 2026  27.30   0.13\n"
+    )
+    assert len(long_rows) == 2
+    assert long_rows[-1] == {"season": "FMA", "year": 2026, "sst": 27.30, "oni": 0.13}
+ 
+    wide_rows, _ = conn._parse_wide(
+        "<table><tr><th>Year</th><th>DJF</th><th>JFM</th><th>FMA</th></tr>"
+        "<tr><td>2026</td><td>-0.37</td><td>-0.14</td><td>0.13</td></tr></table>"
+    )
+    assert [r["season"] for r in wide_rows] == ["DJF", "JFM", "FMA"]
+    assert wide_rows[-1]["oni"] == 0.13
+    # the wide layout carries no absolute SST, and must not invent one
+    assert all(math.isnan(r["sst"]) for r in wide_rows)
+ 
+ 
+def test_oni_connector_refuses_to_return_an_empty_frame():
+    """Silence would be read as 'no El Nino'."""
+    from enso_tracker.connectors.base import SourceUnavailable
+    from enso_tracker.connectors.climate import CPCOniConnector
+ 
+    cfg = get_config()
+    conn = CPCOniConnector("cpc_oni", cfg.sources["climate"]["cpc_oni"], cfg)
+    conn.http_get = lambda url: "<html><body>Service temporarily unavailable</body></html>"
+    with pytest.raises(SourceUnavailable) as err:
+        conn.fetch()
+    assert "0 usable rows" in str(err.value)
+    # the message must carry what it actually received, not just that it failed
+    assert "Service temporarily unavailable" in str(err.value)
+ 
+ 
+def test_oni_url_is_the_layout_the_parser_expects():
+    cfg = get_config()
+    url = cfg.sources["climate"]["cpc_oni"]["url"]
+    assert url.endswith("oni.ascii.txt")
