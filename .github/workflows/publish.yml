@@ -1,0 +1,162 @@
+name: Refresh El Nino tracker
+
+# Cloudflare Pages is Git-connected to this repo with automatic deployments, so
+# this workflow does NOT deploy. It refreshes the tracker and commits the built
+# output to `site/`; Cloudflare sees the push and publishes.
+#
+# GitHub Actions is here purely for the schedule. Cloudflare Pages builds on
+# push and cannot refresh twice daily on its own. The runner also has the
+# network egress needed to reach NOAA, the World Bank and the exchanges, which
+# is what promotes every figure from the bundled seed snapshot to live data.
+on:
+  schedule:
+    - cron: "0 6,18 * * *"      # 06:00 and 18:00 UTC
+  workflow_dispatch:
+    inputs:
+      allow_seeded:
+        description: "Publish even if no source went live (normally blocked)"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "exercises/el-nino/**"
+      - ".github/workflows/publish.yml"
+
+permissions:
+  contents: write        # commit the built site + point-in-time archive
+
+# Never overlap with itself, and never race the Beige Book's update.yml, which
+# also pushes to main.
+concurrency:
+  group: site-commit
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: exercises/el-nino
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: exercises/el-nino/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Validate configuration
+        run: enso-tracker validate
+
+      - name: Test
+        run: pytest -q
+
+      - name: Show source readiness
+        run: enso-tracker sources
+
+      # Every credential here is optional. The run succeeds without them and
+      # the dashboard states which layers stayed composite-derived.
+      - name: Run pipeline (Steps A-F)
+        env:
+          CDSAPI_URL: ${{ secrets.CDSAPI_URL }}
+          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+          ADSAPI_URL: ${{ secrets.ADSAPI_URL }}
+          ADSAPI_KEY: ${{ secrets.ADSAPI_KEY }}
+          EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}
+          USDA_NASS_KEY: ${{ secrets.USDA_NASS_KEY }}
+          TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
+          ENSO_ALERT_WEBHOOK: ${{ secrets.ENSO_ALERT_WEBHOOK }}
+        run: enso-tracker all --in-docs --no-pdf
+
+      # Publish gate. A dashboard reading "Sources live: 0" is honest but reads
+      # as broken to a first-time visitor. Block rather than ship it.
+      - name: Gate on live data
+        if: ${{ github.event.inputs.allow_seeded != 'true' }}
+        run: |
+          python - <<'PY'
+          import json, sys
+          meta = json.load(open("output/dashboard_payload.json"))["meta"]
+          live = meta["sources_live"]
+          print(f"live={live} seeded={meta['sources_seeded']} "
+                f"dormant={meta['sources_dormant']} failed={meta['sources_failed']}")
+          if live == 0:
+              sys.exit(
+                  "No source went live -- refusing to publish a seed-only dashboard.\n"
+                  "Re-run with allow_seeded=true to override deliberately."
+              )
+          PY
+
+      - name: Stage into site/
+        working-directory: .
+        run: |
+          mkdir -p site/el-nino
+          cp exercises/el-nino/output/dashboard.html        site/el-nino/index.html
+          cp exercises/el-nino/output/dashboard_payload.json site/el-nino/payload.json
+          cp exercises/el-nino/docs/sitreps/sitrep_*.md      site/el-nino/ 2>/dev/null || true
+
+      # Commit is the deploy: Cloudflare Pages watches main and publishes on
+      # push. The commit history doubles as the point-in-time audit trail --
+      # one immutable entry per run, matching the never-revised discipline the
+      # rest of the system enforces internally.
+      - name: Commit and let Cloudflare deploy
+        working-directory: .
+        run: |
+          STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+          mkdir -p exercises/el-nino/archive
+          cp exercises/el-nino/output/dashboard_payload.json \
+             "exercises/el-nino/archive/payload_${STAMP}.json"
+
+          git config user.name  "elnino-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add site/el-nino exercises/el-nino/archive exercises/el-nino/docs/sitreps
+
+          if git diff --cached --quiet; then
+            echo "no change -- nothing to deploy"
+          else
+            git commit -m "el-nino: refresh ${STAMP}"
+            # update.yml may have pushed while we were building
+            git pull --rebase --autostash origin main || true
+            git push
+          fi
+
+      - name: Summary
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          p = json.load(open("output/dashboard_payload.json"))
+          s, m = p["state"], p["meta"]
+          print("## El Nino tracker refreshed\n")
+          print(f"- Peak median **{s['peak_median']:.1f} degC** "
+                f"({s['peak_p10']:.1f}-{s['peak_p90']:.1f})")
+          print(f"- Observed ONI **{s['current_oni']:+.1f}** ({s['current_oni_season']}), "
+                f"{s['days_to_peak']} days to peak")
+          print(f"- Sources: {m['sources_live']} live, {m['sources_seeded']} seeded, "
+                f"{m['sources_dormant']} dormant, {m['sources_failed']} failed\n")
+          c = m.get("alert_counts", {})
+          print(f"### Alerts: {c.get('incident',0)} incident, "
+                f"{c.get('standing',0)} standing, {c.get('configuration',0)} config\n")
+          for a in p.get("alerts", []):
+              print(f"- **[{a['severity']}]** {a['title']}")
+          PY
+
+# ---------------------------------------------------------------------------
+# No Cloudflare credentials are needed.
+#
+# The Pages project is Git-connected with automatic deployments, so pushing to
+# main IS the deploy. A `wrangler pages deploy` direct upload would fight that
+# integration rather than complement it.
+#
+# Optional repository secrets, all for data sources rather than hosting:
+#   CDSAPI_KEY / CDSAPI_URL     Copernicus C3S + ERA5 -> gridded precip & temp
+#   ADSAPI_KEY / ADSAPI_URL     CAMS GFAS             -> observed fire activity
+#   EARTHDATA_TOKEN             MODIS NDVI / VHI      -> vegetation stress
+#   USDA_NASS_KEY               USDA QuickStats       -> yields and area
+#   TWELVE_DATA_KEY             intraday market backup
+#   ENSO_ALERT_WEBHOOK          POST target for incident-tier alerts only
+# ---------------------------------------------------------------------------
