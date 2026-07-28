@@ -10,7 +10,33 @@
 #                matching env var is present.
 # cadence: cron expression, UTC.
 # ---------------------------------------------------------------------------
-version: 3
+version: 4
+
+# ---------------------------------------------------------------------------
+# Removed 2026-07-28, after the first fully live run. These eleven were
+# `generic_http_json` stubs pointed at human-readable web pages rather than at
+# machine-readable endpoints, so they could never have succeeded and produced
+# eleven identical failures every run. A permanent failure that no one intends
+# to fix is noise, and noise is what makes an operator stop reading the alert
+# strip -- the same reason the alert tiers exist.
+#
+#   jma, chirps, speibase, fao_giews, amis, geoglam,
+#   senamhi_peru, bmkg_indonesia, imarpe_anchoveta, ipc, fews_net
+#
+# What their removal costs, stated so it is not silently forgotten:
+#   * senamhi_peru / bmkg_indonesia -- national met services for the two
+#     priority regions. Their absence is why Peru and Indonesia are modelled
+#     from teleconnection composites rather than observed locally.
+#   * imarpe_anchoveta -- the fisheries chain is now entirely config-anchored
+#     on 1997-98 with no live biomass or quota input.
+#   * ipc / fews_net -- no food-insecurity phase data at all.
+#   * chirps / speibase / geoglam -- no observed precipitation, drought index
+#     or crop-condition input; those layers stay composite-derived.
+#
+# iri_plume and usda_wasde were kept deliberately. Both are real endpoints
+# that returned 404 and 403 rather than the wrong content type, so both are
+# worth retrying and worth a proper client.
+# ---------------------------------------------------------------------------
 
 defaults:
   timeout_s: 45
@@ -120,25 +146,7 @@ climate:
     units: degC
     variables: [nino34]
 
-  jma:
-    connector: generic_http_json
-    auth: none
-    url: https://ds.data.jma.go.jp/tcc/tcc/products/elnino/index/
-    cadence: "0 04 12 * *"
-    description: JMA ENSO monitoring indices
-    units: degC
-    variables: [nino3]
-
 geospatial:
-  chirps:
-    connector: chirps
-    auth: none
-    url: https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/
-    cadence: "0 07 8 * *"
-    description: CHIRPS v2 monthly precipitation, 0.05 deg
-    units: mm
-    variables: [precip]
-
   era5:
     connector: cds_reanalysis
     auth: key
@@ -148,15 +156,6 @@ geospatial:
     description: ERA5 monthly means for temperature/precip anomaly baselines
     units: K
     variables: [2m_temperature, total_precipitation]
-
-  speibase:
-    connector: generic_netcdf
-    auth: none
-    url: https://digital.csic.es/handle/10261/153475
-    cadence: "0 09 10 * *"
-    description: SPEIbase drought index
-    units: sigma
-    variables: [spei03, spei06, spei12]
 
   modis_vhi:
     connector: generic_http_json
@@ -179,22 +178,6 @@ geospatial:
     variables: [frpfire]
 
 agriculture:
-  fao_giews:
-    connector: generic_http_json
-    auth: none
-    url: https://www.fao.org/giews/en/
-    cadence: "0 05 * * 1"
-    description: FAO GIEWS country briefs and price warnings
-    variables: [alert_status, price_warning]
-
-  amis:
-    connector: generic_http_json
-    auth: none
-    url: https://app.amis-outlook.org/
-    cadence: "0 05 * * 1"
-    description: AMIS Market Monitor supply/demand balances
-    variables: [production, stocks, stock_to_use]
-
   usda_wasde:
     connector: usda_wasde
     auth: none
@@ -211,38 +194,6 @@ agriculture:
     cadence: "0 17 * * 2"
     description: USDA NASS QuickStats
     variables: [yield, area, production]
-
-  geoglam:
-    connector: generic_http_json
-    auth: none
-    url: https://cropmonitor.org/
-    cadence: "0 12 5 * *"
-    description: GEOGLAM Crop Monitor conditions
-    variables: [crop_condition]
-
-  senamhi_peru:
-    connector: generic_http_json
-    auth: none
-    url: https://www.senamhi.gob.pe/
-    cadence: "0 13 * * 1"
-    description: Peru national met service bulletins (ENFEN coastal El Nino index)
-    variables: [icen, coastal_alert]
-
-  bmkg_indonesia:
-    connector: generic_http_json
-    auth: none
-    url: https://www.bmkg.go.id/
-    cadence: "0 13 * * 1"
-    description: Indonesia BMKG climate outlook and hotspot bulletins
-    variables: [rainfall_outlook, hotspots]
-
-  imarpe_anchoveta:
-    connector: generic_http_json
-    auth: none
-    url: https://www.gob.pe/imarpe
-    cadence: "0 14 * * 1"
-    description: IMARPE anchoveta biomass surveys and quota decisions
-    variables: [biomass, quota]
 
 markets:
   worldbank_pinksheet:
@@ -300,19 +251,3 @@ markets:
     units: myr
     variables: [settle]
 
-food_security:
-  ipc:
-    connector: generic_http_json
-    auth: none
-    url: https://www.ipcinfo.org/
-    cadence: "0 06 3 * *"
-    description: IPC/CH acute food insecurity phase classifications
-    variables: [phase, population_affected]
-
-  fews_net:
-    connector: generic_http_json
-    auth: none
-    url: https://fews.net/
-    cadence: "0 06 * * 4"
-    description: FEWS NET outlooks
-    variables: [phase_projection]
