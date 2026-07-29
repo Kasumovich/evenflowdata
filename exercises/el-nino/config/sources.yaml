@@ -117,8 +117,14 @@ climate:
   copernicus_c3s:
     connector: cds_seasonal
     auth: key
-    env: [CDSAPI_URL, CDSAPI_KEY]
+    # Only the token is a secret. CDSAPI_URL is a constant and the connector
+    # defaults it -- requiring it here meant a correctly-supplied key still
+    # produced "dormant (credentials absent)", which reads as your fault
+    # rather than ours.
+    env: [CDSAPI_KEY]
     dataset: seasonal-monthly-single-levels
+    systems: ["51", "5"]     # tried in order; ECMWF renumbers on each upgrade
+    leadtime_max: 6          # SEAS5 horizon. Asking for 12 invalidated the lot.
     cadence: "0 00,12 * * *"
     description: C3S multi-system seasonal forecast (7 centres)
     units: K
@@ -128,9 +134,11 @@ climate:
   ecmwf_seas5:
     connector: cds_seasonal
     auth: key
-    env: [CDSAPI_URL, CDSAPI_KEY]
+    env: [CDSAPI_KEY]
     dataset: seasonal-monthly-single-levels
     originating_centre: ecmwf
+    systems: ["51", "5"]
+    leadtime_max: 6
     cadence: "0 00 6 * *"
     description: ECMWF SEAS5
     units: K
@@ -160,8 +168,10 @@ geospatial:
   era5:
     connector: cds_reanalysis
     auth: key
-    env: [CDSAPI_URL, CDSAPI_KEY]
+    env: [CDSAPI_KEY]
     dataset: reanalysis-era5-single-levels-monthly-means
+    lag_months: 2            # ERA5 monthly means run ~2 months behind; the
+                             # connector walks further back if 2 is too soon.
     cadence: "0 08 7 * *"
     description: ERA5 monthly means for temperature/precip anomaly baselines
     units: K
@@ -260,4 +270,3 @@ markets:
     description: FCPO crude palm oil futures
     units: myr
     variables: [settle]
-
