@@ -125,6 +125,8 @@ climate:
     dataset: seasonal-monthly-single-levels
     systems: ["51", "5"]     # tried in order; ECMWF renumbers on each upgrade
     leadtime_max: 6          # SEAS5 horizon. Asking for 12 invalidated the lot.
+    dataset_key: c3s_multisystem_nino34
+    cds_timeout_s: 420
     cadence: "0 00,12 * * *"
     description: C3S multi-system seasonal forecast (7 centres)
     units: K
@@ -139,6 +141,8 @@ climate:
     originating_centre: ecmwf
     systems: ["51", "5"]
     leadtime_max: 6
+    dataset_key: c3s_seas5_nino34
+    cds_timeout_s: 420
     cadence: "0 00 6 * *"
     description: ECMWF SEAS5
     units: K
@@ -172,6 +176,8 @@ geospatial:
     dataset: reanalysis-era5-single-levels-monthly-means
     lag_months: 2            # ERA5 monthly means run ~2 months behind; the
                              # connector walks further back if 2 is too soon.
+    dataset_key: era5_monthly
+    cds_timeout_s: 420       # ERA5 comes off tape and is the slowest of the three
     cadence: "0 08 7 * *"
     description: ERA5 monthly means for temperature/precip anomaly baselines
     units: K
