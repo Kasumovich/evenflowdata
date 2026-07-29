@@ -1,140 +1,225 @@
 """Credentialed connectors: Copernicus CDS/ADS, NMME THREDDS, exchange feeds.
- 
+
 Each follows the provider's documented request contract. They stay dormant
 until the env vars named in ``config/sources.yaml`` are set, at which point
 the corresponding dashboard layers switch from composite-derived to
 model-derived with no code change. The switch is visible in the UI: layers
 sourced from live gridded data lose the "composite" provenance badge.
 """
- 
+
 from __future__ import annotations
- 
+
 import logging
 import os
 import tempfile
 from pathlib import Path
 from typing import Any
- 
+
 import numpy as np
 import pandas as pd
- 
+
 from .base import FetchResult, KeyedConnector, SourceUnavailable, register
- 
+
 log = logging.getLogger(__name__)
- 
+
 # Nino 3.4 box, the standard definition.
 NINO34_BOX = {"lat": (-5.0, 5.0), "lon": (190.0, 240.0)}
- 
- 
+
+
 @register("cds_seasonal")
 class CDSSeasonalConnector(KeyedConnector):
     """Copernicus C3S seasonal forecasts via the CDS API.
- 
-    Requires ``CDSAPI_URL`` and ``CDSAPI_KEY`` (or ``~/.cdsapirc``). Downloads
-    monthly-mean SST for the forecast horizon, computes the Nino 3.4 box mean
-    per ensemble member, and returns one row per (member, lead).
+
+    Needs ``CDSAPI_KEY`` (and ``CDSAPI_URL``). Downloads monthly-mean SST over
+    the Nino 3.4 box for the forecast horizon and returns one row per
+    (member, lead).
+
+    Two things the first live attempt taught us, both reported by the CDS as a
+    single unhelpful "Request has not produced a valid combination of values":
+
+    * ``system`` is mandatory for the seasonal datasets. ``originating_centre``
+      alone is not enough -- a centre publishes several numbered systems and the
+      API will not choose one for you.
+    * ``leadtime_month`` must stay inside the system's actual horizon. We asked
+      for 1-12; ECMWF SEAS5 publishes 1-6, so every request was invalid no
+      matter what else was right.
+
+    Candidate systems are tried in order because the current ECMWF system
+    number changes with each model upgrade, and a hard-coded one silently
+    expires. Every attempt is reported on failure -- guessing a remote contract
+    and reporting only the last guess is what made this take two rounds.
     """
- 
+
     dataset = "c3s_seasonal_nino34"
- 
-    def fetch_authenticated(self) -> FetchResult:
+
+    #: Newest first. 51 is SEAS5.1, 5 is the long-standing SEAS5.
+    DEFAULT_SYSTEMS = ["51", "5"]
+
+    def _client(self):
         try:
             import cdsapi
-            import xarray as xr
         except ImportError as exc:
             raise SourceUnavailable(
-                f"{self.name}: cdsapi/xarray not installed. CI installs "
+                f"{self.name}: cdsapi not installed. CI installs "
                 f"'.[dev,forecast]'; locally use pip install '.[forecast]'."
             ) from exc
- 
-        client = cdsapi.Client(
-            url=os.environ["CDSAPI_URL"], key=os.environ["CDSAPI_KEY"]
+        # The URL is a constant, not a secret. Requiring it as one meant a
+        # correctly-supplied key still produced a dormant source.
+        return cdsapi.Client(
+            url=os.environ.get("CDSAPI_URL") or "https://cds.climate.copernicus.eu/api",
+            key=os.environ["CDSAPI_KEY"],
         )
- 
-        # The CDS was rebuilt in 2024-25 and renamed this key: the old API took
-        # "format", the current one takes "data_format" and rejects the old
-        # spelling on some datasets. We cannot tell from here which the live
-        # endpoint wants -- this connector has never run against a real
-        # credential -- so try the current spelling first and fall back, rather
-        # than guessing once and reporting a bare failure. Guessing a remote
-        # contract and shipping it untested is how this project lost two days.
-        base: dict[str, Any] = {
-            "originating_centre": self.spec.get("originating_centre", "ecmwf"),
-            "variable": self.spec.get("variables", ["sea_surface_temperature"]),
-            "product_type": ["monthly_mean"],
-            "year": str(pd.Timestamp.utcnow().year),
-            "month": f"{pd.Timestamp.utcnow().month:02d}",
-            "leadtime_month": [str(i) for i in range(1, 13)],
-            "area": [
-                NINO34_BOX["lat"][1], NINO34_BOX["lon"][0] - 360,
-                NINO34_BOX["lat"][0], NINO34_BOX["lon"][1] - 360,
-            ],
-        }
- 
+
+    def _requests(self) -> list[dict[str, Any]]:
+        """Candidate requests, most-likely first."""
+        now = pd.Timestamp.utcnow()
+        lead_max = int(self.spec.get("leadtime_max", 6))
+        systems = [str(s) for s in self.spec.get("systems", self.DEFAULT_SYSTEMS)]
+        if self.spec.get("system"):
+            systems = [str(self.spec["system"])] + [
+                s for s in systems if s != str(self.spec["system"])
+            ]
+
+        out = []
+        for system in systems:
+            for fmt_key in ("data_format", "format"):
+                out.append({
+                    fmt_key: "netcdf",
+                    "originating_centre": self.spec.get("originating_centre", "ecmwf"),
+                    "system": system,
+                    "variable": self.spec.get("variables", ["sea_surface_temperature"]),
+                    "product_type": ["monthly_mean"],
+                    "year": str(now.year),
+                    "month": f"{now.month:02d}",
+                    "leadtime_month": [str(i) for i in range(1, lead_max + 1)],
+                    "area": [
+                        NINO34_BOX["lat"][1], NINO34_BOX["lon"][0] - 360,
+                        NINO34_BOX["lat"][0], NINO34_BOX["lon"][1] - 360,
+                    ],
+                })
+        return out
+
+    def _label(self, request: dict[str, Any]) -> str:
+        return (
+            f"system={request.get('system')} "
+            f"{'data_format' if 'data_format' in request else 'format'}=netcdf "
+            f"lead=1-{request['leadtime_month'][-1]} "
+            f"init={request['year']}-{request['month']}"
+        )
+
+    def _to_frame(self, path: Path, request: dict[str, Any]) -> pd.DataFrame:
+        import xarray as xr
+
+        ds = xr.open_dataset(path)
+        var = next(iter(ds.data_vars))
+        spatial = [d for d in ds[var].dims if d in ("latitude", "longitude", "lat", "lon")]
+        df = ds[var].mean(dim=spatial).to_dataframe().reset_index()
+        df = df.rename(columns={var: "sst"})
+        if "sst" in df and pd.notna(df["sst"].max()) and df["sst"].max() > 100:
+            df["sst"] = df["sst"] - 273.15      # Kelvin -> Celsius
+        df["source_system"] = f"{request.get('originating_centre')}-{request.get('system')}"
+        return df
+
+    def fetch_authenticated(self) -> FetchResult:
+        client = self._client()
         attempts: list[str] = []
+
         with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "c3s.nc"
-            for key in ("data_format", "format"):
-                request = dict(base, **{key: "netcdf"})
+            target = Path(tmp) / "cds.nc"
+            for request in self._requests():
                 try:
                     client.retrieve(self.spec["dataset"], request, str(target))
-                    break
                 except Exception as exc:  # noqa: BLE001
-                    attempts.append(f"{key}=netcdf -> {type(exc).__name__}: {exc}")
-            else:
-                raise SourceUnavailable(
-                    f"{self.name}: CDS retrieve failed for "
-                    f"{self.spec['dataset']}.\n  " + "\n  ".join(attempts)
-                    + "\n  If this reads as a licence error, the dataset's terms "
-                      "must be accepted once in the CDS web interface before the "
-                      "API will serve it."
+                    attempts.append(f"{self._label(request)} -> {type(exc).__name__}: {exc}")
+                    continue
+
+                df = self._to_frame(target, request)
+                init = f"{request['year']}-{request['month']}-01"
+                return FetchResult(
+                    dataset=self.dataset,
+                    frame=df,
+                    source=f"Copernicus C3S ({df['source_system'].iloc[0]})",
+                    source_url=self.url,
+                    valid_time=init,
+                    notes=[
+                        f"{self._label(request)}, {len(df)} rows"
+                    ] + ([f"{len(attempts)} earlier combination(s) rejected"] if attempts else []),
                 )
- 
-            ds = xr.open_dataset(target)
-            var = next(iter(ds.data_vars))
-            box = ds[var].mean(dim=[d for d in ds[var].dims if d in ("latitude", "longitude")])
-            df = box.to_dataframe().reset_index()
- 
-        df = df.rename(columns={var: "sst"})
-        if "sst" in df and df["sst"].max() > 100:      # Kelvin -> Celsius
-            df["sst"] = df["sst"] - 273.15
-        df["source_system"] = base["originating_centre"]
- 
-        # A forecast's observation date is its initialisation, not the moment we
-        # downloaded it. Omitting this made the freshness machinery treat the
-        # result as "age unknown", which sorts last and would have let a stale
-        # seed outrank a current forecast.
-        init = f"{base['year']}-{base['month']}-01"
- 
-        return FetchResult(
-            dataset=self.dataset,
-            frame=df,
-            source=f"Copernicus C3S ({base['originating_centre']})",
-            source_url=self.url,
-            valid_time=init,
-            notes=[f"initialised {init}, {len(df)} member-lead rows"],
+
+        raise SourceUnavailable(
+            f"{self.name}: every request combination was rejected for "
+            f"{self.spec['dataset']}.\n  " + "\n  ".join(attempts)
+            + "\n  A 400 'invalid combination' means auth and licence are fine and "
+              "the parameters are not; a 403 means the dataset licence still needs "
+              "accepting once in the CDS web interface."
         )
- 
- 
+
+
 @register("cds_reanalysis")
 class CDSReanalysisConnector(CDSSeasonalConnector):
-    """ERA5 monthly means -- supplies the 1991-2020 anomaly baseline."""
+    """ERA5 monthly means -- supplies the anomaly baseline.
+
+    This used to inherit the seasonal request wholesale, which is the wrong
+    shape entirely: a reanalysis has no originating_centre, no system and no
+    leadtime, and its product_type is `monthly_averaged_reanalysis`. The CDS
+    replied "None of the data you have requested is available yet" -- true, but
+    only because we had also asked for the current month. ERA5 monthly means
+    run roughly two months behind, so the current month never exists.
+    """
+
     dataset = "era5_monthly"
- 
- 
+
+    def _requests(self) -> list[dict[str, Any]]:
+        now = pd.Timestamp.utcnow().normalize().replace(day=1)
+        lag_start = int(self.spec.get("lag_months", 2))
+        out = []
+        # Walk backwards rather than assume a fixed publication lag: the lag is
+        # a property of ERA5's release schedule, not something we control.
+        for back in range(lag_start, lag_start + 4):
+            month = now - pd.DateOffset(months=back)
+            for fmt_key in ("data_format", "format"):
+                out.append({
+                    fmt_key: "netcdf",
+                    "product_type": ["monthly_averaged_reanalysis"],
+                    "variable": self.spec.get("variables", ["2m_temperature"]),
+                    "year": str(month.year),
+                    "month": f"{month.month:02d}",
+                    "time": ["00:00"],
+                })
+        return out
+
+    def _label(self, request: dict[str, Any]) -> str:
+        return (
+            f"{'data_format' if 'data_format' in request else 'format'}=netcdf "
+            f"month={request['year']}-{request['month']}"
+        )
+
+    def _to_frame(self, path: Path, request: dict[str, Any]) -> pd.DataFrame:
+        import xarray as xr
+
+        ds = xr.open_dataset(path)
+        df = ds.to_dataframe().reset_index()
+        df["source_system"] = "era5"
+        return df
+
+    def fetch_authenticated(self) -> FetchResult:
+        result = super().fetch_authenticated()
+        return result
+
+
 @register("cds_atmosphere")
 class CDSAtmosphereConnector(KeyedConnector):
     """CAMS GFAS fire radiative power via the Atmosphere Data Store."""
- 
+
     dataset = "gfas_fire"
- 
+
     def fetch_authenticated(self) -> FetchResult:
         try:
             import cdsapi
             import xarray as xr
         except ImportError as exc:
             raise SourceUnavailable(f"{self.name}: install the geo extra") from exc
- 
+
         client = cdsapi.Client(
             url=os.environ["ADSAPI_URL"], key=os.environ["ADSAPI_KEY"]
         )
@@ -151,36 +236,36 @@ class CDSAtmosphereConnector(KeyedConnector):
             )
             ds = xr.open_dataset(target)
             df = ds.to_dataframe().reset_index()
- 
+
         return FetchResult(
             dataset=self.dataset, frame=df,
             source="CAMS GFAS", source_url=self.url,
         )
- 
- 
+
+
 @register("nmme_thredds")
 class NMMEThreddsConnector(KeyedConnector):
     """North American Multi-Model Ensemble via OPeNDAP.
- 
+
     Public THREDDS endpoints are often open, so this connector treats
     credentials as optional: if the env vars are absent it still attempts an
     anonymous read and only reports dormant if that also fails.
     """
- 
+
     dataset = "nmme_nino34"
- 
+
     def available(self) -> bool:
         return True     # anonymous attempt is legitimate here
- 
+
     def fetch(self) -> FetchResult:
         return self.fetch_authenticated()
- 
+
     def fetch_authenticated(self) -> FetchResult:
         try:
             import xarray as xr
         except ImportError as exc:
             raise SourceUnavailable(f"{self.name}: install the geo extra") from exc
- 
+
         try:
             ds = xr.open_dataset(self.url)
         except Exception as exc:  # noqa: BLE001
@@ -188,7 +273,7 @@ class NMMEThreddsConnector(KeyedConnector):
                 f"{self.name}: OPeNDAP open failed ({exc}). Anonymous access to "
                 f"the NMME THREDDS server was refused or the endpoint moved."
             ) from exc
- 
+
         var = "sst" if "sst" in ds.data_vars else next(iter(ds.data_vars))
         sel = ds[var].sel(
             lat=slice(*NINO34_BOX["lat"]), lon=slice(*NINO34_BOX["lon"])
@@ -196,25 +281,25 @@ class NMMEThreddsConnector(KeyedConnector):
         df = sel.to_dataframe().reset_index()
         df = df.rename(columns={var: "nino34"})
         df["n_members"] = ds.sizes.get("M", np.nan)
- 
+
         return FetchResult(
             dataset=self.dataset, frame=df,
             source="NOAA NMME", source_url=self.url,
         )
- 
- 
+
+
 @register("generic_http_grib")
 class GenericGribConnector(KeyedConnector):
     """Token-gated GRIB/NetCDF products (JAMSTEC SINTEX-F and similar)."""
- 
+
     dataset = "generic_grib"
- 
+
     def fetch_authenticated(self) -> FetchResult:
         try:
             import xarray as xr
         except ImportError as exc:
             raise SourceUnavailable(f"{self.name}: install the geo extra") from exc
- 
+
         token_var = (self.spec.get("env") or ["TOKEN"])[0]
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "payload.nc"
@@ -228,38 +313,38 @@ class GenericGribConnector(KeyedConnector):
             target.write_bytes(resp.content)
             ds = xr.open_dataset(target)
             df = ds.to_dataframe().reset_index()
- 
+
         return FetchResult(
             dataset=self.name, frame=df,
             source=self.spec.get("description", self.name), source_url=self.url,
         )
- 
- 
+
+
 @register("generic_netcdf")
 class GenericNetcdfConnector(GenericGribConnector):
     """Open NetCDF archives (SPEIbase)."""
     keyless = True
- 
+
     def available(self) -> bool:
         return True
- 
+
     def fetch(self) -> FetchResult:
         return self.fetch_authenticated()
- 
- 
+
+
 @register("chirps")
 class ChirpsConnector(KeyedConnector):
     """CHIRPS v2 monthly precipitation GeoTIFFs.
- 
+
     Keyless in principle but heavy: each global monthly tile is ~15 MB and
     zonal statistics need rasterio + geopandas. Enabled by installing the geo
     extra; until then the precipitation layer is composite-derived and the map
     legend says so.
     """
- 
+
     dataset = "chirps_precip"
     keyless = True
- 
+
     def available(self) -> bool:
         try:
             import rasterio  # noqa: F401
@@ -267,7 +352,7 @@ class ChirpsConnector(KeyedConnector):
         except ImportError:
             return False
         return True
- 
+
     def fetch(self) -> FetchResult:
         if not self.available():
             raise SourceUnavailable(
@@ -275,15 +360,15 @@ class ChirpsConnector(KeyedConnector):
                 f"(pip install '.[geo]'). Precipitation layer stays composite-derived."
             )
         return self.fetch_authenticated()
- 
+
     def fetch_authenticated(self) -> FetchResult:
         import rasterio
         from rasterio.mask import mask
         import geopandas as gpd
- 
+
         month = pd.Timestamp.utcnow().to_period("M") - 1
         tif = f"{self.url.rstrip('/')}/chirps-v2.0.{month.year}.{month.month:02d}.tif"
- 
+
         world = gpd.read_file(
             os.environ.get("ENSO_ADMIN0_PATH", "data/geo/admin0.gpkg")
         )
@@ -299,7 +384,7 @@ class ChirpsConnector(KeyedConnector):
                     "date": month.to_timestamp(),
                     "precip_mm": float(np.nanmean(clipped)),
                 })
- 
+
         if not rows:
             raise SourceUnavailable(f"{self.name}: zonal statistics produced no rows")
         return FetchResult(
