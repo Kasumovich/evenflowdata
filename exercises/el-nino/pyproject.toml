@@ -1,241 +1,49 @@
-name: Refresh El Nino tracker
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
-# Cloudflare Pages is Git-connected to this repo with automatic deployments, so
-# this workflow does NOT deploy. It refreshes the tracker and commits the built
-# output to `site/`; Cloudflare sees the push and publishes.
-#
-# GitHub Actions is here purely for the schedule. Cloudflare Pages builds on
-# push and cannot refresh twice daily on its own. The runner also has the
-# network egress needed to reach NOAA, the World Bank and the exchanges, which
-# is what promotes every figure from the bundled seed snapshot to live data.
-on:
-  schedule:
-    - cron: "0 6,18 * * *"      # 06:00 and 18:00 UTC
-  workflow_dispatch:
-    inputs:
-      allow_seeded:
-        description: "Publish even if no source went live (normally blocked)"
-        type: boolean
-        default: false
-  push:
-    branches: [main]
-    paths:
-      - "exercises/el-nino/**"
-      - ".github/workflows/publish.yml"
+[project]
+name = "enso-tracker"
+version = "1.0.0"
+description = "Production tracking dashboard for the 2026-27 El Nino event and its agricultural/commodity exposure"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "PyYAML>=6.0",
+  "requests>=2.31",
+  "pyarrow>=15.0",
+  "openpyxl>=3.1",
+  "duckdb>=1.0",
+  "plotly>=5.22",
+]
 
-permissions:
-  contents: write        # commit the built site + point-in-time archive
+[project.optional-dependencies]
+app = ["streamlit>=1.36"]
+orchestration = ["prefect>=3.0"]
+geo = [
+  "xarray>=2024.3", "netCDF4>=1.6", "dask>=2024.4",
+  "geopandas>=1.0", "rasterio>=1.3", "cdsapi>=0.7", "zarr>=2.17",
+]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5"]
+# Just enough to talk to the Copernicus CDS and read what it returns. Kept
+# separate from `geo` because that extra drags in geopandas and rasterio --
+# several hundred MB of build for a job that only needs to average a box of
+# sea-surface temperature.
+forecast = ["cdsapi>=0.7.7", "xarray>=2024.3", "netCDF4>=1.6"]
 
-# Never overlap with itself, and never race the Beige Book's update.yml, which
-# also pushes to main.
-concurrency:
-  group: site-commit
-  cancel-in-progress: false
+[project.scripts]
+enso-tracker = "enso_tracker.cli:main"
 
-jobs:
-  refresh:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: exercises/el-nino
+[tool.setuptools.packages.find]
+where = ["src"]
 
-    steps:
-      - uses: actions/checkout@v4
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: exercises/el-nino/pyproject.toml
-
-      # `forecast` adds cdsapi + xarray + netCDF4, which is what lets the
-      # Copernicus connectors run at all. They stay dormant without a
-      # CDSAPI_KEY secret, so this costs ~30s of install and nothing else
-      # until the credential exists.
-      - name: Install
-        run: pip install -e ".[dev,forecast]"
-
-      - name: Validate configuration
-        run: enso-tracker validate
-
-      - name: Test
-        run: pytest -q
-
-      - name: Show source readiness
-        run: enso-tracker sources
-
-      # Every credential here is optional. The run succeeds without them and
-      # the dashboard states which layers stayed composite-derived.
-      - name: Run pipeline (Steps A-F)
-        env:
-          CDSAPI_URL: ${{ secrets.CDSAPI_URL }}
-          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
-          ADSAPI_URL: ${{ secrets.ADSAPI_URL }}
-          ADSAPI_KEY: ${{ secrets.ADSAPI_KEY }}
-          EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}
-          USDA_NASS_KEY: ${{ secrets.USDA_NASS_KEY }}
-          TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
-          ENSO_ALERT_WEBHOOK: ${{ secrets.ENSO_ALERT_WEBHOOK }}
-        run: enso-tracker all --in-docs --no-pdf
-
-      # Publish gate.
-      #
-      # v1 asked only "did any source go live?". Three did, so the first real
-      # run passed -- and shipped a dashboard whose Nino 3.4 reading was six
-      # years old, because the two sources that drive the headline were not
-      # among the three. A count is not a check.
-      #
-      # v2 checked the age of those two instead, and was wrong the other way:
-      # CPC's own ONI table can sit months behind its normal cadence while the
-      # connector reads it perfectly. Age alone cannot tell "we could not reach
-      # the source" from "we reached it, and this is genuinely the newest
-      # season it has published" -- and only the first is a reason to withhold
-      # the page.
-      #
-      # So the gate asks both questions separately:
-      #   1. was each headline dataset read from its primary source?
-      #      -- if not, we are publishing a snapshot dressed as a tracker.
-      #   2. is what that source served absurdly old?
-      #      -- catches the frozen-file case (2,274 days) without punishing a
-      #         slow-but-working publisher. Ordinary lateness is the dashboard's
-      #         stale-observation alert to report, not the gate's to block.
-      #
-      # It reads provenance from whichever field the running pipeline exposes,
-      # so it behaves identically before and after the pipeline change lands.
-      # Half-applied updates have cost us two runs already.
-      - name: Gate on live data
-        if: ${{ github.event.inputs.allow_seeded != 'true' }}
-        run: |
-          python - <<'PY'
-          import json, sys, yaml
-
-          CRITICAL = ["oni_observed", "weekly_nino"]
-          STATE_KEY = {"oni_observed": "oni", "weekly_nino": "weekly"}
-          ABSURD_DAYS = 365     # no primary climate feed is legitimately this stale
-
-          limits = yaml.safe_load(open("config/thresholds.yaml"))["alerts"]["observation_age_h"]
-          p = json.load(open("output/dashboard_payload.json"))
-          meta, state = p["meta"], p["state"]
-          ages = meta.get("observation_age_h", {})
-
-          def tier(dataset):
-              """Prefer the per-dataset map; fall back to the state block, which
-              every version of the pipeline has emitted."""
-              direct = meta.get("dataset_provenance", {}).get(dataset)
-              if direct:
-                  return str(direct)
-              return str(state.get("provenance", {}).get(STATE_KEY[dataset], "missing"))
-
-          print(f"live={meta['sources_live']} seeded={meta['sources_seeded']} "
-                f"dormant={meta['sources_dormant']} failed={meta['sources_failed']}")
-
-          problems, notes = [], []
-          for dataset in CRITICAL:
-              t, age = tier(dataset), ages.get(dataset)
-              shown = "unknown age" if age is None else f"{age/24:.0f} days old"
-
-              if not t.startswith("live"):
-                  problems.append(
-                      f"{dataset}: not read from its primary source this run "
-                      f"(served from {t}, {shown})"
-                  )
-                  continue
-              if age is None:
-                  problems.append(f"{dataset}: live but will not state an observation date")
-                  continue
-              if age > ABSURD_DAYS * 24:
-                  problems.append(
-                      f"{dataset}: primary source answered but served data "
-                      f"{age/24:.0f} days old -- almost certainly a frozen file"
-                  )
-                  continue
-
-              print(f"OK  {dataset}: {t}, {shown}")
-              # Merely late, not absurd: publish it and say so. Same limits the
-              # in-dashboard alarm uses, so the gate and the page cannot
-              # disagree about what counts as stale.
-              spec = limits.get(dataset) or limits["default"]
-              if spec and age > float(spec["critical"]):
-                  notes.append(f"{dataset} is {age/24:.0f} days old, past its "
-                               f"{float(spec['critical'])/24:.0f}-day critical limit")
-
-          if problems:
-              sys.exit(
-                  "Refusing to publish. The tracker's headline cannot be trusted:\n  - "
-                  + "\n  - ".join(problems)
-                  + "\n\nFix the source, or re-run with allow_seeded=true to publish "
-                    "deliberately with these known gaps."
-              )
-
-          for n in notes:
-              print(f"NOTE {n}. Publishing with the stale-observation alert raised.")
-          PY
-
-      - name: Stage into site/
-        working-directory: .
-        run: |
-          mkdir -p site/el-nino
-          cp exercises/el-nino/output/dashboard.html        site/el-nino/index.html
-          cp exercises/el-nino/output/dashboard_payload.json site/el-nino/payload.json
-          cp exercises/el-nino/docs/sitreps/sitrep_*.md      site/el-nino/ 2>/dev/null || true
-
-      # Commit is the deploy: Cloudflare Pages watches main and publishes on
-      # push. The commit history doubles as the point-in-time audit trail --
-      # one immutable entry per run, matching the never-revised discipline the
-      # rest of the system enforces internally.
-      - name: Commit and let Cloudflare deploy
-        working-directory: .
-        run: |
-          STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
-          mkdir -p exercises/el-nino/archive
-          cp exercises/el-nino/output/dashboard_payload.json \
-             "exercises/el-nino/archive/payload_${STAMP}.json"
-
-          git config user.name  "elnino-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add site/el-nino exercises/el-nino/archive exercises/el-nino/docs/sitreps
-
-          if git diff --cached --quiet; then
-            echo "no change -- nothing to deploy"
-          else
-            git commit -m "el-nino: refresh ${STAMP}"
-            # update.yml may have pushed while we were building
-            git pull --rebase --autostash origin main || true
-            git push
-          fi
-
-      - name: Summary
-        run: |
-          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          p = json.load(open("output/dashboard_payload.json"))
-          s, m = p["state"], p["meta"]
-          print("## El Nino tracker refreshed\n")
-          print(f"- Peak median **{s['peak_median']:.1f} degC** "
-                f"({s['peak_p10']:.1f}-{s['peak_p90']:.1f})")
-          print(f"- Observed ONI **{s['current_oni']:+.1f}** ({s['current_oni_season']}), "
-                f"{s['days_to_peak']} days to peak")
-          print(f"- Sources: {m['sources_live']} live, {m['sources_seeded']} seeded, "
-                f"{m['sources_dormant']} dormant, {m['sources_failed']} failed\n")
-          c = m.get("alert_counts", {})
-          print(f"### Alerts: {c.get('incident',0)} incident, "
-                f"{c.get('standing',0)} standing, {c.get('configuration',0)} config\n")
-          for a in p.get("alerts", []):
-              print(f"- **[{a['severity']}]** {a['title']}")
-          PY
-
-# ---------------------------------------------------------------------------
-# No Cloudflare credentials are needed.
-#
-# The Pages project is Git-connected with automatic deployments, so pushing to
-# main IS the deploy. A `wrangler pages deploy` direct upload would fight that
-# integration rather than complement it.
-#
-# Optional repository secrets, all for data sources rather than hosting:
-#   CDSAPI_KEY / CDSAPI_URL     Copernicus C3S + ERA5 -> gridded precip & temp
-#   ADSAPI_KEY / ADSAPI_URL     CAMS GFAS             -> observed fire activity
-#   EARTHDATA_TOKEN             MODIS NDVI / VHI      -> vegetation stress
-#   USDA_NASS_KEY               USDA QuickStats       -> yields and area
-#   TWELVE_DATA_KEY             intraday market backup
-#   ENSO_ALERT_WEBHOOK          POST target for incident-tier alerts only
-# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 96
+target-version = "py311"
