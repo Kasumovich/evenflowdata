@@ -50,10 +50,56 @@ class CDSSeasonalConnector(KeyedConnector):
     and reporting only the last guess is what made this take two rounds.
     """
 
-    dataset = "c3s_seasonal_nino34"
-
     #: Newest first. 51 is SEAS5.1, 5 is the long-standing SEAS5.
     DEFAULT_SYSTEMS = ["51", "5"]
+
+    #: Seconds to wait for one CDS job before abandoning it. The CDS is a
+    #: queue in front of a tape archive: a request can sit in "accepted" for
+    #: an unbounded time, and cdsapi polls forever by default. One slow
+    #: retrieval used to stall the whole refresh -- and because this workflow
+    #: holds a concurrency group, a stalled refresh blocks every later run
+    #: too. A forecast we cannot fetch in time is a seeded plume, not a
+    #: reason to stop publishing.
+    DEFAULT_CDS_TIMEOUT_S = 420
+
+    @property
+    def dataset(self) -> str:
+        """Per-source, not per-class.
+
+        Both C3S blocks previously wrote to one key, so whichever ran second
+        silently overwrote the first -- two live sources, one surviving
+        dataset, and no sign anything had been lost.
+        """
+        return str(self.spec.get("dataset_key") or "c3s_seasonal_nino34")
+
+    def _retrieve_bounded(self, client, request: dict[str, Any], target: Path) -> None:
+        """Run one CDS retrieval under a hard deadline.
+
+        The worker is a daemon thread so that abandoning it cannot keep the
+        process alive; the CDS job itself carries on server-side and its result
+        will be cached for the next run, which is why giving up here is cheap.
+        """
+        import threading
+
+        limit = float(self.spec.get("cds_timeout_s", self.DEFAULT_CDS_TIMEOUT_S))
+        box: dict[str, BaseException] = {}
+
+        def work() -> None:
+            try:
+                client.retrieve(self.spec["dataset"], request, str(target))
+            except BaseException as exc:  # noqa: BLE001
+                box["error"] = exc
+
+        thread = threading.Thread(target=work, daemon=True)
+        thread.start()
+        thread.join(limit)
+        if thread.is_alive():
+            raise TimeoutError(
+                f"CDS did not deliver within {limit:.0f}s (job continues "
+                f"server-side and should be cached for the next run)"
+            )
+        if "error" in box:
+            raise box["error"]
 
     def _client(self):
         try:
@@ -128,7 +174,7 @@ class CDSSeasonalConnector(KeyedConnector):
             target = Path(tmp) / "cds.nc"
             for request in self._requests():
                 try:
-                    client.retrieve(self.spec["dataset"], request, str(target))
+                    self._retrieve_bounded(client, request, target)
                 except Exception as exc:  # noqa: BLE001
                     attempts.append(f"{self._label(request)} -> {type(exc).__name__}: {exc}")
                     continue
@@ -167,7 +213,9 @@ class CDSReanalysisConnector(CDSSeasonalConnector):
     run roughly two months behind, so the current month never exists.
     """
 
-    dataset = "era5_monthly"
+    @property
+    def dataset(self) -> str:
+        return str(self.spec.get("dataset_key") or "era5_monthly")
 
     def _requests(self) -> list[dict[str, Any]]:
         now = pd.Timestamp.utcnow().normalize().replace(day=1)
