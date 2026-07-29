@@ -48,8 +48,12 @@ jobs:
           cache: pip
           cache-dependency-path: exercises/el-nino/pyproject.toml
 
+      # `forecast` adds cdsapi + xarray + netCDF4, which is what lets the
+      # Copernicus connectors run at all. They stay dormant without a
+      # CDSAPI_KEY secret, so this costs ~30s of install and nothing else
+      # until the credential exists.
       - name: Install
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,forecast]"
 
       - name: Validate configuration
         run: enso-tracker validate
