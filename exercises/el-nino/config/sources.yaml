@@ -87,6 +87,16 @@ climate:
   iri_plume:
     connector: iri_plume
     auth: none
+    # KEPT AS A RECORD, EXPECTED TO FAIL. Checked 2026-07-28: IRI has withdrawn
+    # public forecast data. Their current ENSO page states "We are no longer
+    # providing forecast data" and offers a collaboration form instead. This is
+    # not a moved endpoint and there is no client to write -- the 404 is the
+    # correct answer to the question we are asking.
+    #
+    # It stays in the registry because the plume is the single largest gap in
+    # this tracker, and a source that silently disappears from a config is a
+    # gap nobody re-examines. The replacement route is Copernicus C3S
+    # (`copernicus_c3s` below), which needs a free credential rather than code.
     url: https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/
     cadence: "0 16 19 * *"         # IRI/CPC plume, ~19th monthly
     description: IRI/CPC dynamical + statistical model plume
