@@ -171,38 +171,64 @@ jobs:
               print(f"NOTE {n}. Publishing with the stale-observation alert raised.")
           PY
 
-      - name: Stage into site/
-        working-directory: .
-        run: |
-          mkdir -p site/el-nino
-          cp exercises/el-nino/output/dashboard.html        site/el-nino/index.html
-          cp exercises/el-nino/output/dashboard_payload.json site/el-nino/payload.json
-          cp exercises/el-nino/docs/sitreps/sitrep_*.md      site/el-nino/ 2>/dev/null || true
-
-      # Commit is the deploy: Cloudflare Pages watches main and publishes on
-      # push. The commit history doubles as the point-in-time audit trail --
-      # one immutable entry per run, matching the never-revised discipline the
-      # rest of the system enforces internally.
+      # Publish, then commit.
+      #
+      # This used to stage into site/, commit, then `git pull --rebase`. The
+      # Beige Book's own workflow pushes to the same branch, and when it landed
+      # first the rebase tried to merge two generated payloads line by line.
+      # Every file conflicted, the rebase stopped mid-flight, the job ended on a
+      # detached HEAD and nothing was ever pushed -- so the site silently froze
+      # while the runs kept going green-then-red for reasons nobody was reading.
+      #
+      # Generated artifacts must never be merged. There is no meaningful
+      # three-way merge of two dashboards built from different runs; the newer
+      # one simply wins. So we hold the outputs aside, move to whatever main is
+      # now, lay them down on top, and push -- retrying if we lose another race.
       - name: Commit and let Cloudflare deploy
         working-directory: .
         run: |
+          set -euo pipefail
           STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
-          mkdir -p exercises/el-nino/archive
-          cp exercises/el-nino/output/dashboard_payload.json \
-             "exercises/el-nino/archive/payload_${STAMP}.json"
+          HOLD=$(mktemp -d)
+
+          cp exercises/el-nino/output/dashboard.html         "$HOLD/index.html"
+          cp exercises/el-nino/output/dashboard_payload.json "$HOLD/payload.json"
+          cp exercises/el-nino/docs/sitreps/sitrep_*.md      "$HOLD/" 2>/dev/null || true
 
           git config user.name  "elnino-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add site/el-nino exercises/el-nino/archive exercises/el-nino/docs/sitreps
 
-          if git diff --cached --quiet; then
-            echo "no change -- nothing to deploy"
-          else
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git checkout -B main origin/main
+
+            mkdir -p site/el-nino exercises/el-nino/archive exercises/el-nino/docs/sitreps
+            cp "$HOLD/index.html"   site/el-nino/index.html
+            cp "$HOLD/payload.json" site/el-nino/payload.json
+            cp "$HOLD/payload.json" "exercises/el-nino/archive/payload_${STAMP}.json"
+            for f in "$HOLD"/sitrep_*.md; do
+              [ -e "$f" ] || continue
+              cp "$f" site/el-nino/
+              cp "$f" exercises/el-nino/docs/sitreps/
+            done
+
+            git add site/el-nino exercises/el-nino/archive exercises/el-nino/docs/sitreps
+
+            if git diff --cached --quiet; then
+              echo "no change -- nothing to deploy"
+              exit 0
+            fi
+
             git commit -m "el-nino: refresh ${STAMP}"
-            # update.yml may have pushed while we were building
-            git pull --rebase --autostash origin main || true
-            git push
-          fi
+            if git push origin main; then
+              echo "pushed on attempt ${attempt}; Cloudflare will deploy"
+              exit 0
+            fi
+            echo "lost a push race on attempt ${attempt}, rebuilding on new main"
+          done
+
+          echo "::error::could not push after 3 attempts"
+          exit 1
 
       - name: Summary
         run: |
