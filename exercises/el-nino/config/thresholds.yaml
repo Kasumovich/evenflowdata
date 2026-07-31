@@ -48,16 +48,36 @@ alerts:
   # does not age.
   #
   # The ONI limits deserve their arithmetic written down, because they are the
-  # publish gate as well as the alarm. An ONI season is a 3-month mean stamped
-  # at its centre month, and CPC releases it in the first half of the month
-  # after the season closes. So a perfectly healthy feed read on 3 August shows
-  # AMJ, centred 15 May: 80 days old. 1800 h (75 d) sat below that and would
-  # have failed a working source once a month.
+  # publish gate as well as the alarm.
+  #
+  # An ONI season is a 3-month mean stamped at its CENTRE month, and CPC can
+  # only publish it once the season has closed -- releasing in the first half
+  # of the following month. So the age of a perfectly healthy feed sawtooths
+  # rather than drifts:
+  #
+  #   30 Jul 2026  newest season AMJ, centred 15 May   ->  76 d
+  #   12 Aug 2026  still AMJ, the day before MJJ lands ->  89 d   <- the peak
+  #   13 Aug 2026  MJJ lands, centred 15 Jun           ->  59 d
+  #
+  # Healthy range is therefore roughly 50-90 days, forever, by construction.
+  # Two earlier settings were both wrong against that:
+  #   75 d critical -- would have failed a working source every month;
+  #   60 d warn / 90 d critical -- warns for most of every month and would
+  #     have declared "critically stale" on 12 August with nothing wrong.
+  # An alarm that fires on healthy data is the one an operator learns to
+  # ignore, which is exactly how the six-year-old Nino 3.4 value survived.
+  #
+  # So both limits sit ABOVE the healthy peak of 89 d, and each means
+  # something an operator can act on:
+  #   warn 96 d      CPC has slipped roughly a week past its release window
+  #   critical 115 d CPC has missed a whole release cycle
+  # A threshold set below the healthy peak is not a stricter alarm, it is a
+  # broken one.
   observation_age_h:
     default:            {warn: 720,  critical: 2160}   # 30 d / 90 d
-    oni_observed:       {warn: 1440, critical: 2160}   # 60 d / 90 d; healthy peak is ~80 d
+    oni_observed:       {warn: 2304, critical: 2760}   # 96 d / 115 d; healthy peak 89 d
     weekly_nino:        {warn: 240,  critical: 504}    # weekly product
-    nino34_monthly:     {warn: 1440, critical: 2160}
+    nino34_monthly:     {warn: 2304, critical: 2760}   # same publication cadence
     ensemble_plume:     {warn: 1080, critical: 1800}   # monthly initialisation
     market_baseline:    {warn: 120,  critical: 336}    # trading days
     futures_prices:     {warn: 96,   critical: 240}
