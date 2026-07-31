@@ -200,7 +200,11 @@ jobs:
 
           for attempt in 1 2 3; do
             git fetch origin main
-            git checkout -B main origin/main
+            # -f because the working tree is disposable: everything we intend
+            # to publish is already in $HOLD. Without it the checkout aborts,
+            # since the pipeline rewrites docs/sitreps/ in place and git will
+            # not move a branch over locally-modified tracked files.
+            git checkout -f -B main origin/main
 
             mkdir -p site/el-nino exercises/el-nino/archive exercises/el-nino/docs/sitreps
             cp "$HOLD/index.html"   site/el-nino/index.html
