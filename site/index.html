@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -129,7 +129,7 @@ footer a{color:var(--ink-2)}
     </div>
     <div class="rule">
       <b>Provenance on every figure</b>
-      <span>Each value is labelled by how it was obtained &mdash; read from a
+      <span>Each value is labelled by how it was obtained — read from a
       primary source, cached, or modelled. The tiers are never blurred.</span>
     </div>
     <div class="rule">
@@ -148,39 +148,59 @@ footer a{color:var(--ink-2)}
 <div class="cards">
 
   <article class="card">
-    <div class="no">Exercise 01</div>
+    <h3><a href="./book2bill/">AI-Capex Book-to-Bill Monitor</a></h3>
+    <p class="conv">
+      Converts <em>company order books</em> into an early-warning gauge for the
+      AI capital cycle — cohort book-to-bill, a cancellation log, and a price
+      radar that runs ahead of the earnings report.
+    </p>
+    <div class="facts">
+      <div class="fact"><div class="v">2.33×</div><div class="k">Aggregate b2b</div></div>
+      <div class="fact"><div class="v">10</div><div class="k">Cohort names</div></div>
+      <div class="fact"><div class="v">0</div><div class="k">Cancellations</div></div>
+      <div class="fact"><div class="v">Daily</div><div class="k">Post-close scan</div></div>
+    </div>
+    <div class="tags">
+      <span class="tag">Book-to-bill</span>
+      <span class="tag">Backlog momentum</span>
+      <span class="tag">Price radar</span>
+      <span class="tag">News triage</span>
+    </div>
+    <a class="go" href="./book2bill/">Open the monitor →</a>
+  </article>
+
+  <article class="card">
     <h3><a href="./beige-book/">Beige Book Alt-Data Screen</a></h3>
     <p class="conv">
       Converts <em>qualitative Federal Reserve survey text</em> into a
-      quantitative macro regime signal &mdash; recession probability and
+      quantitative macro regime signal — recession probability and
       inflation forecasts, scored district by district.
     </p>
     <div class="facts">
       <div class="fact"><div class="v">~440</div><div class="k">Books scored</div></div>
-      <div class="fact"><div class="v">1970&ndash;</div><div class="k">Coverage</div></div>
-      <div class="fact"><div class="v">8&times;/yr</div><div class="k">Cadence</div></div>
+      <div class="fact"><div class="v">1970–</div><div class="k">Coverage</div></div>
+      <div class="fact"><div class="v">8×/yr</div><div class="k">Cadence</div></div>
       <div class="fact"><div class="v">12</div><div class="k">Districts</div></div>
     </div>
     <div class="tags">
       <span class="tag">Text scoring</span>
-      <span class="tag">Lough&shy;ran&ndash;McDonald</span>
+      <span class="tag">Lough­ran–McDonald</span>
       <span class="tag">Adjective ladder</span>
       <span class="tag">Logistic regression</span>
       <span class="tag">Backtested</span>
     </div>
-    <a class="go" href="./beige-book/">Open the screen &rarr;</a>
+    <a class="go" href="./beige-book/">Open the screen →</a>
   </article>
 
   <article class="card">
-    <div class="no">Exercise 02</div>
-    <h3><a href="./el-nino/">El Ni&ntilde;o 2026&ndash;27 Tracker</a></h3>
+    <h3><a href="./el-nino/">El Niño 2026–27 Tracker</a></h3>
     <p class="conv">
       Converts a <em>physical climate forecast</em> into commodity supply and
-      price pressure &mdash; a global-production-weighted shock across 13
+      price pressure — a global-production-weighted shock across 13
       commodities and 41 regions, refreshed twice daily.
     </p>
     <div class="facts">
-      <div class="fact"><div class="v">3.6&nbsp;&deg;C</div><div class="k">Forecast peak</div></div>
+      <div class="fact"><div class="v">3.6&nbsp;°C</div><div class="k">Forecast peak</div></div>
       <div class="fact"><div class="v">667</div><div class="k">Ensemble members</div></div>
       <div class="fact"><div class="v">41</div><div class="k">Regions</div></div>
       <div class="fact"><div class="v">20</div><div class="k">Sources</div></div>
@@ -191,7 +211,7 @@ footer a{color:var(--ink-2)}
       <span class="tag">Fisheries depletion</span>
       <span class="tag">Not backtested</span>
     </div>
-    <a class="go" href="./el-nino/">Open the tracker &rarr;</a>
+    <a class="go" href="./el-nino/">Open the tracker →</a>
   </article>
 
 
@@ -199,10 +219,10 @@ footer a{color:var(--ink-2)}
 
 <footer>
   <p>
-    <b>These are research exercises, not investment advice.</b> Exercise 02
-    publishes scenario output from a structural model, not a fitted signal.
-    Where it extrapolates beyond the range its inputs were calibrated on, it
-    labels the output and discounts its own confidence. Read the
+    <b>These are research exercises, not investment advice.</b> The El Niño
+    tracker publishes scenario output from a structural model, not a fitted
+    signal. Where it extrapolates beyond the range its inputs were calibrated
+    on, it labels the output and discounts its own confidence. Read the
     method notes on each page before using a number.
   </p>
   <p id="stamp"></p>
@@ -222,13 +242,16 @@ btn.onclick = () => setTheme(
 setTheme(window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 
 /* Reads the tracker's own payload so the hub cannot drift out of date with the
-   thing it links to. Fails silently -- a stale card is better than a broken page. */
+   thing it links to. Fails silently -- a stale card is better than a broken page.
+   Finds the El Nino card by its link so it keeps working regardless of card order. */
 fetch("./el-nino/payload.json")
   .then(r => r.ok ? r.json() : Promise.reject())
   .then(p => {
     const s = p.state, m = p.meta;
-    const facts = document.querySelectorAll(".cards article:nth-child(2) .fact .v");
-    if (facts[0]) facts[0].textContent = s.peak_median.toFixed(1) + " °C";
+    const elnino = [...document.querySelectorAll(".cards article")]
+      .find(a => a.querySelector('a[href="./el-nino/"]'));
+    const facts = elnino ? elnino.querySelectorAll(".fact .v") : [];
+    if (facts[0]) facts[0].textContent = s.peak_median.toFixed(1) + " °C";
     if (facts[1]) facts[1].textContent = p.ensemble.n_members;
     const stamp = document.getElementById("stamp");
     stamp.textContent = "Tracker last refreshed "
@@ -236,5 +259,6 @@ fetch("./el-nino/payload.json")
   })
   .catch(() => {});
 </script>
+
 </body>
 </html>
