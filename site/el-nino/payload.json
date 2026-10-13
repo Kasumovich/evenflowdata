@@ -1,7 +1,7 @@
 {
   "meta": {
-    "run_id": "20261013T000019Z-d5d1427e",
-    "generated_utc": "2026-10-13T00:01:32.706193+00:00",
+    "run_id": "20261013T131723Z-cf2c931b",
+    "generated_utc": "2026-10-13T13:18:39.194872+00:00",
     "as_of": "2026-10-13",
     "schema_version": 3,
     "sources_live": 7,
@@ -16,11 +16,11 @@
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1416.0,
-      "weekly_nino": 312.0,
-      "ensemble_plume": 2496.0,
+      "oni_observed": 1429.3,
+      "weekly_nino": 325.3,
+      "ensemble_plume": 2509.3,
       "historical_analogs": null,
-      "market_baseline": 1896.0
+      "market_baseline": 1909.3
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,9 +35,9 @@
       "configuration": 2
     },
     "metrics": {
-      "run_id": "20261013T000019Z-d5d1427e",
-      "started_utc": "2026-10-13T00:00:19.198083+00:00",
-      "finished_utc": "2026-10-13T00:01:32.718489+00:00",
+      "run_id": "20261013T131723Z-cf2c931b",
+      "started_utc": "2026-10-13T13:17:23.903453+00:00",
+      "finished_utc": "2026-10-13T13:18:39.222159+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -49,13 +49,13 @@
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: ensemble_plume",
-          "detail": "The newest measurement is 104 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 105 days old, past the 75-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: market_baseline",
-          "detail": "The newest measurement is 79 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 80 days old, past the 14-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "standing",
@@ -67,7 +67,7 @@
           "severity": "configuration",
           "code": "observation_ageing",
           "title": "Observation ageing: weekly_nino",
-          "detail": "Newest measurement is 13 days old (10-day soft limit). Normal for a product with a long publication lag; worth checking otherwise."
+          "detail": "Newest measurement is 14 days old (10-day soft limit). Normal for a product with a long publication lag; worth checking otherwise."
         },
         {
           "severity": "configuration",
@@ -84,11 +84,11 @@
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1416.0,
-        "weekly_nino": 312.0,
-        "ensemble_plume": 2496.0,
+        "oni_observed": 1429.3,
+        "weekly_nino": 325.3,
+        "ensemble_plume": 2509.3,
         "historical_analogs": null,
-        "market_baseline": 1896.0
+        "market_baseline": 1909.3
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -8545,13 +8545,13 @@
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: ensemble_plume",
-      "detail": "The newest measurement is 104 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 105 days old, past the 75-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: market_baseline",
-      "detail": "The newest measurement is 79 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 80 days old, past the 14-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "standing",
@@ -8563,7 +8563,7 @@
       "severity": "configuration",
       "code": "observation_ageing",
       "title": "Observation ageing: weekly_nino",
-      "detail": "Newest measurement is 13 days old (10-day soft limit). Normal for a product with a long publication lag; worth checking otherwise."
+      "detail": "Newest measurement is 14 days old (10-day soft limit). Normal for a product with a long publication lag; worth checking otherwise."
     },
     {
       "severity": "configuration",
