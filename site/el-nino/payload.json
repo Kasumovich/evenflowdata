@@ -1,7 +1,7 @@
 {
   "meta": {
-    "run_id": "20261013T131723Z-cf2c931b",
-    "generated_utc": "2026-10-13T13:18:39.194872+00:00",
+    "run_id": "20261013T220811Z-fffc4b4f",
+    "generated_utc": "2026-10-13T22:09:46.225735+00:00",
     "as_of": "2026-10-13",
     "schema_version": 3,
     "sources_live": 7,
@@ -9,18 +9,18 @@
     "sources_dormant": 10,
     "sources_failed": 3,
     "data_latency_h": {
-      "oni_observed": 0.02,
-      "weekly_nino": 0.02,
+      "oni_observed": 0.03,
+      "weekly_nino": 0.03,
       "ensemble_plume": 0.0,
       "historical_analogs": 0.0,
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1429.3,
-      "weekly_nino": 325.3,
-      "ensemble_plume": 2509.3,
+      "oni_observed": 1438.2,
+      "weekly_nino": 334.2,
+      "ensemble_plume": 2518.2,
       "historical_analogs": null,
-      "market_baseline": 1909.3
+      "market_baseline": 1918.2
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,9 +35,9 @@
       "configuration": 2
     },
     "metrics": {
-      "run_id": "20261013T131723Z-cf2c931b",
-      "started_utc": "2026-10-13T13:17:23.903453+00:00",
-      "finished_utc": "2026-10-13T13:18:39.222159+00:00",
+      "run_id": "20261013T220811Z-fffc4b4f",
+      "started_utc": "2026-10-13T22:08:11.499985+00:00",
+      "finished_utc": "2026-10-13T22:09:46.246529+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -77,18 +77,18 @@
         }
       ],
       "data_latency_h": {
-        "oni_observed": 0.02,
-        "weekly_nino": 0.02,
+        "oni_observed": 0.03,
+        "weekly_nino": 0.03,
         "ensemble_plume": 0.0,
         "historical_analogs": 0.0,
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1429.3,
-        "weekly_nino": 325.3,
-        "ensemble_plume": 2509.3,
+        "oni_observed": 1438.2,
+        "weekly_nino": 334.2,
+        "ensemble_plume": 2518.2,
         "historical_analogs": null,
-        "market_baseline": 1909.3
+        "market_baseline": 1918.2
       },
       "dataset_provenance": {
         "oni_observed": "live",
