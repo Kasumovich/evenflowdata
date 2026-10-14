@@ -1,26 +1,26 @@
 {
   "meta": {
-    "run_id": "20261013T220811Z-fffc4b4f",
-    "generated_utc": "2026-10-13T22:09:46.225735+00:00",
-    "as_of": "2026-10-13",
+    "run_id": "20261014T105754Z-70998260",
+    "generated_utc": "2026-10-14T10:59:13.225371+00:00",
+    "as_of": "2026-10-14",
     "schema_version": 3,
     "sources_live": 7,
     "sources_seeded": 3,
     "sources_dormant": 10,
     "sources_failed": 3,
     "data_latency_h": {
-      "oni_observed": 0.03,
-      "weekly_nino": 0.03,
+      "oni_observed": 0.02,
+      "weekly_nino": 0.02,
       "ensemble_plume": 0.0,
       "historical_analogs": 0.0,
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1438.2,
-      "weekly_nino": 334.2,
-      "ensemble_plume": 2518.2,
+      "oni_observed": 1451.0,
+      "weekly_nino": 347.0,
+      "ensemble_plume": 2531.0,
       "historical_analogs": null,
-      "market_baseline": 1918.2
+      "market_baseline": 1931.0
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,9 +35,9 @@
       "configuration": 2
     },
     "metrics": {
-      "run_id": "20261013T220811Z-fffc4b4f",
-      "started_utc": "2026-10-13T22:08:11.499985+00:00",
-      "finished_utc": "2026-10-13T22:09:46.246529+00:00",
+      "run_id": "20261014T105754Z-70998260",
+      "started_utc": "2026-10-14T10:57:54.722222+00:00",
+      "finished_utc": "2026-10-14T10:59:13.246135+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -77,18 +77,18 @@
         }
       ],
       "data_latency_h": {
-        "oni_observed": 0.03,
-        "weekly_nino": 0.03,
+        "oni_observed": 0.02,
+        "weekly_nino": 0.02,
         "ensemble_plume": 0.0,
         "historical_analogs": 0.0,
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1438.2,
-        "weekly_nino": 334.2,
-        "ensemble_plume": 2518.2,
+        "oni_observed": 1451.0,
+        "weekly_nino": 347.0,
+        "ensemble_plume": 2531.0,
         "historical_analogs": null,
-        "market_baseline": 1918.2
+        "market_baseline": 1931.0
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -135,7 +135,7 @@
     }
   },
   "state": {
-    "as_of": "2026-10-13",
+    "as_of": "2026-10-14",
     "current_oni": 2.16,
     "current_oni_season": "JAS 2026",
     "current_weekly_nino34": 3.2,
@@ -145,7 +145,7 @@
     "peak_p10": 2.8,
     "peak_p90": 4.4,
     "peak_centre": "2026-12-15",
-    "days_to_peak": 63,
+    "days_to_peak": 62,
     "prob_super": 0.960976619562441,
     "prob_exceed_record": 0.91,
     "n_models": 14,
