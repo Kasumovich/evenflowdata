@@ -1,8 +1,8 @@
 {
   "meta": {
-    "run_id": "20261019T215417Z-4769442c",
-    "generated_utc": "2026-10-19T21:55:31.633074+00:00",
-    "as_of": "2026-10-19",
+    "run_id": "20261020T104516Z-a5dde58b",
+    "generated_utc": "2026-10-20T10:46:32.307478+00:00",
+    "as_of": "2026-10-20",
     "schema_version": 3,
     "sources_live": 7,
     "sources_seeded": 3,
@@ -16,11 +16,11 @@
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1581.9,
-      "weekly_nino": 141.9,
-      "ensemble_plume": 2661.9,
+      "oni_observed": 1594.8,
+      "weekly_nino": 154.8,
+      "ensemble_plume": 2674.8,
       "historical_analogs": null,
-      "market_baseline": 2061.9
+      "market_baseline": 2074.8
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,9 +35,9 @@
       "configuration": 1
     },
     "metrics": {
-      "run_id": "20261019T215417Z-4769442c",
-      "started_utc": "2026-10-19T21:54:17.262819+00:00",
-      "finished_utc": "2026-10-19T21:55:31.658754+00:00",
+      "run_id": "20261020T104516Z-a5dde58b",
+      "started_utc": "2026-10-20T10:45:16.037840+00:00",
+      "finished_utc": "2026-10-20T10:46:32.321002+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -78,11 +78,11 @@
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1581.9,
-        "weekly_nino": 141.9,
-        "ensemble_plume": 2661.9,
+        "oni_observed": 1594.8,
+        "weekly_nino": 154.8,
+        "ensemble_plume": 2674.8,
         "historical_analogs": null,
-        "market_baseline": 2061.9
+        "market_baseline": 2074.8
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -129,7 +129,7 @@
     }
   },
   "state": {
-    "as_of": "2026-10-19",
+    "as_of": "2026-10-20",
     "current_oni": 2.16,
     "current_oni_season": "JAS 2026",
     "current_weekly_nino34": 3.3,
@@ -139,7 +139,7 @@
     "peak_p10": 2.8,
     "peak_p90": 4.4,
     "peak_centre": "2026-12-15",
-    "days_to_peak": 57,
+    "days_to_peak": 56,
     "prob_super": 0.960976619562441,
     "prob_exceed_record": 0.91,
     "n_models": 14,
