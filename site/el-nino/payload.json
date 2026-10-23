@@ -1,7 +1,7 @@
 {
   "meta": {
-    "run_id": "20261023T104851Z-32084f3a",
-    "generated_utc": "2026-10-23T10:49:59.767610+00:00",
+    "run_id": "20261023T205115Z-1bf2ad70",
+    "generated_utc": "2026-10-23T20:52:26.628610+00:00",
     "as_of": "2026-10-23",
     "schema_version": 3,
     "sources_live": 7,
@@ -16,11 +16,11 @@
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1666.8,
-      "weekly_nino": 226.8,
-      "ensemble_plume": 2746.8,
+      "oni_observed": 1676.9,
+      "weekly_nino": 236.9,
+      "ensemble_plume": 2756.9,
       "historical_analogs": null,
-      "market_baseline": 2146.8
+      "market_baseline": 2156.9
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,9 +35,9 @@
       "configuration": 1
     },
     "metrics": {
-      "run_id": "20261023T104851Z-32084f3a",
-      "started_utc": "2026-10-23T10:48:51.096075+00:00",
-      "finished_utc": "2026-10-23T10:49:59.784027+00:00",
+      "run_id": "20261023T205115Z-1bf2ad70",
+      "started_utc": "2026-10-23T20:51:15.243750+00:00",
+      "finished_utc": "2026-10-23T20:52:26.658885+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -49,13 +49,13 @@
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: ensemble_plume",
-          "detail": "The newest measurement is 114 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 115 days old, past the 75-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: market_baseline",
-          "detail": "The newest measurement is 89 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 90 days old, past the 14-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "standing",
@@ -78,11 +78,11 @@
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1666.8,
-        "weekly_nino": 226.8,
-        "ensemble_plume": 2746.8,
+        "oni_observed": 1676.9,
+        "weekly_nino": 236.9,
+        "ensemble_plume": 2756.9,
         "historical_analogs": null,
-        "market_baseline": 2146.8
+        "market_baseline": 2156.9
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -92,7 +92,7 @@
         "market_baseline": "seed:mixed"
       },
       "notes": [
-        "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (HTTPSConnectionPool(host='iri.columbia.edu', port=443): Max retries exceeded with url: /~forecast/ensofcst/Data/figure4_data.csv (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'iri.columbia.edu'. (_ssl.c:1016)\"))))). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
+        "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (404 Client Error: Not Found for url: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv)). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
         "nmme: dormant (credentials absent; missing NMME_THREDDS_USER, NMME_THREDDS_PASS)",
         "jamstec_sintex: dormant (credentials absent; missing JAMSTEC_TOKEN)",
         "bom_access_s: dormant (credentials absent; missing BOM_API_KEY)",
@@ -8520,7 +8520,7 @@
   },
   "qc_flags": [],
   "notes": [
-    "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (HTTPSConnectionPool(host='iri.columbia.edu', port=443): Max retries exceeded with url: /~forecast/ensofcst/Data/figure4_data.csv (Caused by SSLError(SSLCertVerificationError(1, \"[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'iri.columbia.edu'. (_ssl.c:1016)\"))))). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
+    "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (404 Client Error: Not Found for url: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv)). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
     "nmme: dormant (credentials absent; missing NMME_THREDDS_USER, NMME_THREDDS_PASS)",
     "jamstec_sintex: dormant (credentials absent; missing JAMSTEC_TOKEN)",
     "bom_access_s: dormant (credentials absent; missing BOM_API_KEY)",
@@ -8539,13 +8539,13 @@
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: ensemble_plume",
-      "detail": "The newest measurement is 114 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 115 days old, past the 75-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: market_baseline",
-      "detail": "The newest measurement is 89 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 90 days old, past the 14-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "standing",
