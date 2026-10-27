@@ -176,8 +176,8 @@ footer a{color:var(--ink-2)}
       inflation forecasts, scored district by district.
     </p>
     <div class="facts">
-      <div class="fact"><div class="v">~440</div><div class="k">Books scored</div></div>
-      <div class="fact"><div class="v">1970–</div><div class="k">Coverage</div></div>
+      <div class="fact"><div class="v">479</div><div class="k">Books scored</div></div>
+      <div class="fact"><div class="v">1970–2026</div><div class="k">Coverage</div></div>
       <div class="fact"><div class="v">8×/yr</div><div class="k">Cadence</div></div>
       <div class="fact"><div class="v">12</div><div class="k">Districts</div></div>
     </div>
@@ -257,6 +257,26 @@ fetch("./el-nino/payload.json")
       + String(m.generated_utc).slice(0, 16).replace("T", " ") + " UTC · run " + m.run_id;
   })
   .catch(() => {});
+
+/* Beige Book card reads the screen's own data.js (which assigns
+   window.DASHBOARD_DATA) so the hub count can't drift from the screen.
+   data.js is JS, not JSON, so it's loaded as a <script>, not fetched.
+   Fails silently -- the hardcoded 479 / 1970-2026 are the fallback.
+   Finds the card by its link so it survives card reordering. */
+(function(){
+  const s = document.createElement("script");
+  s.src = "./beige-book/data.js";
+  s.onload = () => {
+    const d = window.DASHBOARD_DATA;
+    if (!d || !d.dates || !d.dates.length) return;
+    const bb = [...document.querySelectorAll(".cards article")]
+      .find(a => a.querySelector('a[href="./beige-book/"]'));
+    const facts = bb ? bb.querySelectorAll(".fact .v") : [];
+    if (facts[0]) facts[0].textContent = d.dates.length;
+    if (facts[1] && d.as_of) facts[1].textContent = "1970\u2013" + d.as_of.slice(0, 4);
+  };
+  document.head.appendChild(s);
+})();
 </script>
 
 </body>
