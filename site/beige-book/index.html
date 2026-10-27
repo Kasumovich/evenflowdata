@@ -106,7 +106,7 @@
     <div>
       <p class="eyebrow">Alternative data · Federal Reserve Beige Book</p>
       <h1>Corporate-guidance screen · 1970–2026</h1>
-      <p class="sub">~440 books · 4 lenses · withholding overlay from 1998 · never revised</p>
+      <p class="sub">479 books · 4 lenses · withholding overlay from 1998 · never revised</p>
     </div>
     <span class="badge" id="statusBadge"><span class="dot"></span><span id="statusText">checking…</span></span>
   </div>
@@ -174,7 +174,7 @@
     <div class="chart-wrap"><canvas id="lensChart" role="img"
       aria-label="Zoomable time series of four Beige Book lens composites — growth, inflation, labor and risks — from 1970 to 2026, with NBER recession periods shaded.">
       Growth and risk composites move opposite each other and dip during recessions; inflation peaks in the 1970s-80s and again in the early 2020s.</canvas></div>
-    <p class="read" id="read1">showing 1970 – 2026 · 440 books · potential range ±2</p>
+    <p class="read" id="read1">showing 1970 – 2026 · 479 books · potential range ±2</p>
   </div>
 
   <div class="card">
@@ -261,12 +261,14 @@
 
     <p style="color:var(--faint);font-size:12px"><strong>What's real vs placeholder.</strong>
     Real: the four lens scores (growth, inflation, labor, risks), scored by the adjective
-    ladder over the actual Beige Book text (1996&ndash;present); the inflation anchor
-    (<strong>BLS CPI-U</strong>); and the <strong>NBER</strong> recession dates. Still
-    placeholder: the withholding overlay, the district heat-grid for pre-2024 books (those
-    are scored at national level), and the topic-attention feed &mdash; these are clearly
-    labeled here and will be wired to real sources next. Use <strong>Download CSV</strong>
-    to export the full history.</p>
+    ladder over the actual Beige Book text (1970&ndash;present); the inflation anchor
+    (<strong>BLS CPI-U</strong>); the <strong>NBER</strong> recession dates; the district
+    heat-grid; and the topic-attention router (live word-share over each book's text). One
+    resolution note: books before 2024 are scored at the national level, so their
+    per-district heat-grid cells carry that national reading rather than twelve separate
+    ones. Still synthetic: only the withholding overlay &mdash; clearly labeled, and the one
+    series not yet wired to a live source. Use <strong>Download CSV</strong> to export the
+    full history.</p>
   </details>
 
 </div>
@@ -284,7 +286,7 @@
   //  (*_lens.parquet -> lens series ; *_withholding.parquet -> withholding).
   //  Everything below this block is presentation and needs no edits.
   // ===================================================================
-  var N=440, START=new Date(1970,0,15), STEP=Math.round(365.25/8); // ~8 books/yr
+  var N=479, START=new Date(1970,0,15), STEP=Math.round(365.25/8); // ~8 books/yr
   var dates=[]; for(var i=0;i<N;i++){var d=new Date(START);d.setDate(d.getDate()+i*STEP);dates.push(d);}
   function frac(d){return d.getFullYear()+ (d.getMonth())/12;}
 
@@ -343,7 +345,7 @@
   (function(){
     var y0=dates[0].getFullYear(), y1=dates[N-1].getFullYear(), rng=y0+"\u2013"+y1;
     var h1=document.querySelector("h1"); if(h1) h1.textContent="Corporate-guidance screen \u00B7 "+rng;
-    var sub=document.querySelector(".sub"); if(sub) sub.textContent="~"+N+" books \u00B7 4 lenses \u00B7 withholding overlay from 1998 \u00B7 never revised";
+    var sub=document.querySelector(".sub"); if(sub) sub.textContent=N+" books \u00B7 4 lenses \u00B7 withholding overlay from 1998 \u00B7 never revised";
     var r1=document.getElementById("read1"); if(r1) r1.textContent="showing "+y0+" \u2013 "+y1+" \u00B7 "+N+" books \u00B7 potential range \u00B12";
     var r2=document.getElementById("read2"); if(r2) r2.textContent="showing "+y0+" \u2013 "+y1;
     if(typeof document!=="undefined") document.title="Beige Book alt-data screen \u2014 "+rng;
