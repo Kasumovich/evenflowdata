@@ -1,26 +1,26 @@
 {
   "meta": {
-    "run_id": "20261105T230638Z-2254304c",
-    "generated_utc": "2026-11-05T23:12:15.694431+00:00",
-    "as_of": "2026-11-05",
+    "run_id": "20261106T133226Z-3d3c13d3",
+    "generated_utc": "2026-11-06T13:35:17.911270+00:00",
+    "as_of": "2026-11-06",
     "schema_version": 3,
-    "sources_live": 5,
+    "sources_live": 7,
     "sources_seeded": 3,
     "sources_dormant": 10,
-    "sources_failed": 5,
+    "sources_failed": 3,
     "data_latency_h": {
-      "oni_observed": 0.09,
-      "weekly_nino": 0.09,
+      "oni_observed": 0.05,
+      "weekly_nino": 0.05,
       "ensemble_plume": 0.0,
       "historical_analogs": 0.0,
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1247.2,
-      "weekly_nino": 215.2,
-      "ensemble_plume": 3071.2,
+      "oni_observed": 1261.6,
+      "weekly_nino": 229.6,
+      "ensemble_plume": 3085.6,
       "historical_analogs": null,
-      "market_baseline": 2471.2
+      "market_baseline": 2485.6
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,27 +35,27 @@
       "configuration": 1
     },
     "metrics": {
-      "run_id": "20261105T230638Z-2254304c",
-      "started_utc": "2026-11-05T23:06:38.839475+00:00",
-      "finished_utc": "2026-11-05T23:12:15.720909+00:00",
+      "run_id": "20261106T133226Z-3d3c13d3",
+      "started_utc": "2026-11-06T13:32:26.426534+00:00",
+      "finished_utc": "2026-11-06T13:35:17.939007+00:00",
       "sources_attempted": 20,
-      "sources_live": 5,
+      "sources_live": 7,
       "sources_seeded": 3,
       "sources_dormant": 10,
-      "sources_failed": 5,
+      "sources_failed": 3,
       "qc_failures": [],
       "alerts": [
         {
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: ensemble_plume",
-          "detail": "The newest measurement is 128 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 129 days old, past the 75-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: market_baseline",
-          "detail": "The newest measurement is 103 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 104 days old, past the 14-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "standing",
@@ -71,18 +71,18 @@
         }
       ],
       "data_latency_h": {
-        "oni_observed": 0.09,
-        "weekly_nino": 0.09,
+        "oni_observed": 0.05,
+        "weekly_nino": 0.05,
         "ensemble_plume": 0.0,
         "historical_analogs": 0.0,
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1247.2,
-        "weekly_nino": 215.2,
-        "ensemble_plume": 3071.2,
+        "oni_observed": 1261.6,
+        "weekly_nino": 229.6,
+        "ensemble_plume": 3085.6,
         "historical_analogs": null,
-        "market_baseline": 2471.2
+        "market_baseline": 2485.6
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -94,8 +94,6 @@
       "notes": [
         "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (404 Client Error: Not Found for url: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv)). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
         "nmme: dormant (credentials absent; missing NMME_THREDDS_USER, NMME_THREDDS_PASS)",
-        "copernicus_c3s: copernicus_c3s: every request combination was rejected for seasonal-monthly-single-levels.\n  system=51 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/d57513b2-8f72-486a-b622-098a8f5584c4/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230740 - Mars server task finished in error\nmars - ERROR  - 20261105.230740 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230740 - Error code is -2\nmars - ERROR  - 20261105.230740 - Request failed\nmars - ERROR  - 20261105.230740 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=51 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/b4aa4db3-a485-4ed3-8a11-3030826d15cc/results\nThe job has failed\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230801 - Mars server task finished in error\nmars - ERROR  - 20261105.230801 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230801 - Error code is -2\nmars - ERROR  - 20261105.230801 - Request failed\nmars - ERROR  - 20261105.230801 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=5 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/3ce2660b-772e-4dde-8ccd-70695bc0be1f/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230832 - Mars server task finished in error\nmars - ERROR  - 20261105.230832 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230832 - Error code is -2\nmars - ERROR  - 20261105.230832 - Request failed\nmars - ERROR  - 20261105.230832 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=5 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/d9c3667c-2c0e-47b9-9a25-3ccaf4dae462/results\nThe job has failed\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\nThe job failed with: MarsRuntimeError\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230853 - Mars server task finished in error\nmars - ERROR  - 20261105.230853 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230853 - Error code is -2\nmars - ERROR  - 20261105.230853 - Request failed\nmars - ERROR  - 20261105.230853 - Some errors reported (last error -2)\n\n  A 400 'invalid combination' means auth and licence are fine and the parameters are not; a 403 means the dataset licence still needs accepting once in the CDS web interface.",
-        "ecmwf_seas5: ecmwf_seas5: every request combination was rejected for seasonal-monthly-single-levels.\n  system=51 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/51fb35c4-343d-4765-ae35-16f92faa3b5e/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230917 - Mars server task finished in error\nmars - ERROR  - 20261105.230917 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230917 - Error code is -2\nmars - ERROR  - 20261105.230917 - Request failed\nmars - ERROR  - 20261105.230917 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=51 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/c73425ba-0989-401d-9be3-c82f388c2825/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230948 - Mars server task finished in error\nmars - ERROR  - 20261105.230948 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230948 - Error code is -2\nmars - ERROR  - 20261105.230948 - Request failed\nmars - ERROR  - 20261105.230948 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\n  system=5 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/0e324344-49f8-4def-a918-8bfc606b35d0/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.231019 - Mars server task finished in error\nmars - ERROR  - 20261105.231019 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.231019 - Error code is -2\nmars - ERROR  - 20261105.231019 - Request failed\nmars - ERROR  - 20261105.231019 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=5 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/436b0ffa-00c7-479b-8a98-f3e46b9dc537/results\nThe job has failed\nThe job failed with: MarsRuntimeError\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.231124 - Mars server task finished in error\nmars - ERROR  - 20261105.231124 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.231124 - Error code is -2\nmars - ERROR  - 20261105.231124 - Request failed\nmars - ERROR  - 20261105.231124 - Some errors reported (last error -2)\n\n  A 400 'invalid combination' means auth and licence are fine and the parameters are not; a 403 means the dataset licence still needs accepting once in the CDS web interface.",
         "jamstec_sintex: dormant (credentials absent; missing JAMSTEC_TOKEN)",
         "bom_access_s: dormant (credentials absent; missing BOM_API_KEY)",
         "era5: unexpected error ValueError(\"did not find a match in any of xarray's currently installed IO backends ['netcdf4']. Consider explicitly selecting one of the installed engines via the ``engine`` parameter, or installing additional IO dependencies, see:\\nhttps://docs.xarray.dev/en/stable/getting-started-guide/installing.html\\nhttps://docs.xarray.dev/en/stable/user-guide/io.html\")",
@@ -122,8 +120,6 @@
       ],
       "failed_sources": [
         "iri_plume",
-        "copernicus_c3s",
-        "ecmwf_seas5",
         "era5",
         "usda_wasde"
       ],
@@ -133,7 +129,7 @@
     }
   },
   "state": {
-    "as_of": "2026-11-05",
+    "as_of": "2026-11-06",
     "current_oni": 2.46,
     "current_oni_season": "ASO 2026",
     "current_weekly_nino34": 3.4,
@@ -143,7 +139,7 @@
     "peak_p10": 2.8,
     "peak_p90": 4.4,
     "peak_centre": "2026-12-15",
-    "days_to_peak": 40,
+    "days_to_peak": 39,
     "prob_super": 0.960976619562441,
     "prob_exceed_record": 0.91,
     "n_models": 14,
@@ -8531,8 +8527,6 @@
   "notes": [
     "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (404 Client Error: Not Found for url: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv)). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
     "nmme: dormant (credentials absent; missing NMME_THREDDS_USER, NMME_THREDDS_PASS)",
-    "copernicus_c3s: copernicus_c3s: every request combination was rejected for seasonal-monthly-single-levels.\n  system=51 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/d57513b2-8f72-486a-b622-098a8f5584c4/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230740 - Mars server task finished in error\nmars - ERROR  - 20261105.230740 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230740 - Error code is -2\nmars - ERROR  - 20261105.230740 - Request failed\nmars - ERROR  - 20261105.230740 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=51 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/b4aa4db3-a485-4ed3-8a11-3030826d15cc/results\nThe job has failed\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230801 - Mars server task finished in error\nmars - ERROR  - 20261105.230801 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230801 - Error code is -2\nmars - ERROR  - 20261105.230801 - Request failed\nmars - ERROR  - 20261105.230801 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=5 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/3ce2660b-772e-4dde-8ccd-70695bc0be1f/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230832 - Mars server task finished in error\nmars - ERROR  - 20261105.230832 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230832 - Error code is -2\nmars - ERROR  - 20261105.230832 - Request failed\nmars - ERROR  - 20261105.230832 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=5 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/d9c3667c-2c0e-47b9-9a25-3ccaf4dae462/results\nThe job has failed\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\nThe job failed with: MarsRuntimeError\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34', '172228', '167'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230853 - Mars server task finished in error\nmars - ERROR  - 20261105.230853 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230853 - Error code is -2\nmars - ERROR  - 20261105.230853 - Request failed\nmars - ERROR  - 20261105.230853 - Some errors reported (last error -2)\n\n  A 400 'invalid combination' means auth and licence are fine and the parameters are not; a 403 means the dataset licence still needs accepting once in the CDS web interface.",
-    "ecmwf_seas5: ecmwf_seas5: every request combination was rejected for seasonal-monthly-single-levels.\n  system=51 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/51fb35c4-343d-4765-ae35-16f92faa3b5e/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230917 - Mars server task finished in error\nmars - ERROR  - 20261105.230917 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230917 - Error code is -2\nmars - ERROR  - 20261105.230917 - Request failed\nmars - ERROR  - 20261105.230917 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=51 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/c73425ba-0989-401d-9be3-c82f388c2825/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['51'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.230948 - Mars server task finished in error\nmars - ERROR  - 20261105.230948 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.230948 - Error code is -2\nmars - ERROR  - 20261105.230948 - Request failed\nmars - ERROR  - 20261105.230948 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\n  system=5 data_format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/0e324344-49f8-4def-a918-8bfc606b35d0/results\nThe job has failed\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.231019 - Mars server task finished in error\nmars - ERROR  - 20261105.231019 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.231019 - Error code is -2\nmars - ERROR  - 20261105.231019 - Request failed\nmars - ERROR  - 20261105.231019 - Some errors reported (last error -2)\n\nThe job failed with: MarsRuntimeError\n  system=5 format=netcdf lead=1-6 init=2026-11 -> HTTPError: 400 Client Error: Bad Request for url: https://cds.climate.copernicus.eu/api/retrieve/v1/jobs/436b0ffa-00c7-479b-8a98-f3e46b9dc537/results\nThe job has failed\nThe job failed with: MarsRuntimeError\nThe 'format' key for requests is deprecated, please use 'data_format' instead. Use of 'format' is no longer part of the system testing, therefore it is not guaranteed to work.\nMARS has returned an error, please check your selection.\nRequest submitted to the MARS server:\n[{'area': ['5.0', '-170.0', '-5.0', '-120.0'], 'class': ['c3'], 'database': 'ecmwf', 'date': ['2026-11-01'], 'expect': ['any'], 'expver': ['1'], 'fcmonth': ['1', '2', '3', '4', '5', '6'], 'levtype': ['sfc'], 'method': ['1'], 'number': ['all'], 'origin': ['ecmf'], 'param': ['34'], 'stream': ['msmm'], 'system': ['5'], 'time': ['all'], 'type': ['fcmean']}]\nFull error message:\nmars - ERROR  - 20261105.231124 - Mars server task finished in error\nmars - ERROR  - 20261105.231124 - AccessError: Restricted access to current C3S seasonal forecast ECMWF contribution. Please check that your date selection is valid. For more information, visit https://climate.copernicus.eu/seasonal-forecasts [marser-ecmwf]\nmars - ERROR  - 20261105.231124 - Error code is -2\nmars - ERROR  - 20261105.231124 - Request failed\nmars - ERROR  - 20261105.231124 - Some errors reported (last error -2)\n\n  A 400 'invalid combination' means auth and licence are fine and the parameters are not; a 403 means the dataset licence still needs accepting once in the CDS web interface.",
     "jamstec_sintex: dormant (credentials absent; missing JAMSTEC_TOKEN)",
     "bom_access_s: dormant (credentials absent; missing BOM_API_KEY)",
     "era5: unexpected error ValueError(\"did not find a match in any of xarray's currently installed IO backends ['netcdf4']. Consider explicitly selecting one of the installed engines via the ``engine`` parameter, or installing additional IO dependencies, see:\\nhttps://docs.xarray.dev/en/stable/getting-started-guide/installing.html\\nhttps://docs.xarray.dev/en/stable/user-guide/io.html\")",
@@ -8550,13 +8544,13 @@
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: ensemble_plume",
-      "detail": "The newest measurement is 128 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 129 days old, past the 75-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: market_baseline",
-      "detail": "The newest measurement is 103 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 104 days old, past the 14-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "standing",
