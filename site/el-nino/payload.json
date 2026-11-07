@@ -1,8 +1,8 @@
 {
   "meta": {
-    "run_id": "20261106T223638Z-6172c434",
-    "generated_utc": "2026-11-06T22:37:38.005085+00:00",
-    "as_of": "2026-11-06",
+    "run_id": "20261107T121245Z-a1a41518",
+    "generated_utc": "2026-11-07T12:13:55.833424+00:00",
+    "as_of": "2026-11-07",
     "schema_version": 3,
     "sources_live": 7,
     "sources_seeded": 3,
@@ -16,11 +16,11 @@
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1270.6,
-      "weekly_nino": 238.6,
-      "ensemble_plume": 3094.6,
+      "oni_observed": 1284.2,
+      "weekly_nino": 252.2,
+      "ensemble_plume": 3108.2,
       "historical_analogs": null,
-      "market_baseline": 2494.6
+      "market_baseline": 2508.2
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -32,12 +32,12 @@
     "alert_counts": {
       "incident": 2,
       "standing": 1,
-      "configuration": 1
+      "configuration": 2
     },
     "metrics": {
-      "run_id": "20261106T223638Z-6172c434",
-      "started_utc": "2026-11-06T22:36:38.137775+00:00",
-      "finished_utc": "2026-11-06T22:37:38.025024+00:00",
+      "run_id": "20261107T121245Z-a1a41518",
+      "started_utc": "2026-11-07T12:12:45.697092+00:00",
+      "finished_utc": "2026-11-07T12:13:55.845469+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -49,19 +49,25 @@
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: ensemble_plume",
-          "detail": "The newest measurement is 129 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 130 days old, past the 75-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "incident",
           "code": "observation_critically_stale",
           "title": "Observation critically stale: market_baseline",
-          "detail": "The newest measurement is 104 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+          "detail": "The newest measurement is 105 days old, past the 14-day limit. The feed may be reachable and still not publishing."
         },
         {
           "severity": "standing",
           "code": "extrapolation_regime",
           "title": "Extrapolation regime (3.60 degC)",
           "detail": "The forecast median exceeds 2.8 degC, above which teleconnection composites have no observational grounding -- no event this large has been recorded. Every impact layer already carries a 35% confidence penalty. This is a property of the event, not a fault: it will not clear."
+        },
+        {
+          "severity": "configuration",
+          "code": "observation_ageing",
+          "title": "Observation ageing: weekly_nino",
+          "detail": "Newest measurement is 11 days old (10-day soft limit). Normal for a product with a long publication lag; worth checking otherwise."
         },
         {
           "severity": "configuration",
@@ -78,11 +84,11 @@
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1270.6,
-        "weekly_nino": 238.6,
-        "ensemble_plume": 3094.6,
+        "oni_observed": 1284.2,
+        "weekly_nino": 252.2,
+        "ensemble_plume": 3108.2,
         "historical_analogs": null,
-        "market_baseline": 2494.6
+        "market_baseline": 2508.2
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -129,7 +135,7 @@
     }
   },
   "state": {
-    "as_of": "2026-11-06",
+    "as_of": "2026-11-07",
     "current_oni": 2.46,
     "current_oni_season": "ASO 2026",
     "current_weekly_nino34": 3.4,
@@ -139,7 +145,7 @@
     "peak_p10": 2.8,
     "peak_p90": 4.4,
     "peak_centre": "2026-12-15",
-    "days_to_peak": 39,
+    "days_to_peak": 38,
     "prob_super": 0.960976619562441,
     "prob_exceed_record": 0.91,
     "n_models": 14,
@@ -8544,19 +8550,25 @@
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: ensemble_plume",
-      "detail": "The newest measurement is 129 days old, past the 75-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 130 days old, past the 75-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "incident",
       "code": "observation_critically_stale",
       "title": "Observation critically stale: market_baseline",
-      "detail": "The newest measurement is 104 days old, past the 14-day limit. The feed may be reachable and still not publishing."
+      "detail": "The newest measurement is 105 days old, past the 14-day limit. The feed may be reachable and still not publishing."
     },
     {
       "severity": "standing",
       "code": "extrapolation_regime",
       "title": "Extrapolation regime (3.60 degC)",
       "detail": "The forecast median exceeds 2.8 degC, above which teleconnection composites have no observational grounding -- no event this large has been recorded. Every impact layer already carries a 35% confidence penalty. This is a property of the event, not a fault: it will not clear."
+    },
+    {
+      "severity": "configuration",
+      "code": "observation_ageing",
+      "title": "Observation ageing: weekly_nino",
+      "detail": "Newest measurement is 11 days old (10-day soft limit). Normal for a product with a long publication lag; worth checking otherwise."
     },
     {
       "severity": "configuration",
