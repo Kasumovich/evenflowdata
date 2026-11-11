@@ -1,7 +1,7 @@
 {
   "meta": {
-    "run_id": "20261111T132045Z-a2765ddb",
-    "generated_utc": "2026-11-11T13:21:49.875023+00:00",
+    "run_id": "20261111T235451Z-79acbbca",
+    "generated_utc": "2026-11-11T23:55:53.352964+00:00",
     "as_of": "2026-11-11",
     "schema_version": 3,
     "sources_live": 7,
@@ -16,11 +16,11 @@
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1381.4,
-      "weekly_nino": 349.4,
-      "ensemble_plume": 3205.4,
+      "oni_observed": 1391.9,
+      "weekly_nino": 359.9,
+      "ensemble_plume": 3215.9,
       "historical_analogs": null,
-      "market_baseline": 2605.4
+      "market_baseline": 2615.9
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,9 +35,9 @@
       "configuration": 2
     },
     "metrics": {
-      "run_id": "20261111T132045Z-a2765ddb",
-      "started_utc": "2026-11-11T13:20:45.133360+00:00",
-      "finished_utc": "2026-11-11T13:21:49.902327+00:00",
+      "run_id": "20261111T235451Z-79acbbca",
+      "started_utc": "2026-11-11T23:54:51.097465+00:00",
+      "finished_utc": "2026-11-11T23:55:53.381196+00:00",
       "sources_attempted": 20,
       "sources_live": 7,
       "sources_seeded": 3,
@@ -84,11 +84,11 @@
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1381.4,
-        "weekly_nino": 349.4,
-        "ensemble_plume": 3205.4,
+        "oni_observed": 1391.9,
+        "weekly_nino": 359.9,
+        "ensemble_plume": 3215.9,
         "historical_analogs": null,
-        "market_baseline": 2605.4
+        "market_baseline": 2615.9
       },
       "dataset_provenance": {
         "oni_observed": "live",
