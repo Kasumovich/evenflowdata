@@ -1,26 +1,26 @@
 {
   "meta": {
-    "run_id": "20261114T124758Z-e44ad041",
-    "generated_utc": "2026-11-14T13:25:58.087671+00:00",
+    "run_id": "20261114T215216Z-5100db68",
+    "generated_utc": "2026-11-14T21:53:22.719701+00:00",
     "as_of": "2026-11-14",
     "schema_version": 3,
-    "sources_live": 6,
+    "sources_live": 7,
     "sources_seeded": 3,
     "sources_dormant": 10,
-    "sources_failed": 4,
+    "sources_failed": 3,
     "data_latency_h": {
-      "oni_observed": 0.63,
-      "weekly_nino": 0.63,
+      "oni_observed": 0.02,
+      "weekly_nino": 0.02,
       "ensemble_plume": 0.0,
       "historical_analogs": 0.0,
       "market_baseline": 0.0
     },
     "observation_age_h": {
-      "oni_observed": 1453.4,
-      "weekly_nino": 421.4,
-      "ensemble_plume": 3277.4,
+      "oni_observed": 1461.9,
+      "weekly_nino": 429.9,
+      "ensemble_plume": 3285.9,
       "historical_analogs": null,
-      "market_baseline": 2677.4
+      "market_baseline": 2685.9
     },
     "dataset_provenance": {
       "oni_observed": "live",
@@ -35,14 +35,14 @@
       "configuration": 2
     },
     "metrics": {
-      "run_id": "20261114T124758Z-e44ad041",
-      "started_utc": "2026-11-14T12:47:58.974813+00:00",
-      "finished_utc": "2026-11-14T13:25:58.113752+00:00",
+      "run_id": "20261114T215216Z-5100db68",
+      "started_utc": "2026-11-14T21:52:16.772617+00:00",
+      "finished_utc": "2026-11-14T21:53:22.735738+00:00",
       "sources_attempted": 20,
-      "sources_live": 6,
+      "sources_live": 7,
       "sources_seeded": 3,
       "sources_dormant": 10,
-      "sources_failed": 4,
+      "sources_failed": 3,
       "qc_failures": [],
       "alerts": [
         {
@@ -77,18 +77,18 @@
         }
       ],
       "data_latency_h": {
-        "oni_observed": 0.63,
-        "weekly_nino": 0.63,
+        "oni_observed": 0.02,
+        "weekly_nino": 0.02,
         "ensemble_plume": 0.0,
         "historical_analogs": 0.0,
         "market_baseline": 0.0
       },
       "observation_age_h": {
-        "oni_observed": 1453.4,
-        "weekly_nino": 421.4,
-        "ensemble_plume": 3277.4,
+        "oni_observed": 1461.9,
+        "weekly_nino": 429.9,
+        "ensemble_plume": 3285.9,
         "historical_analogs": null,
-        "market_baseline": 2677.4
+        "market_baseline": 2685.9
       },
       "dataset_provenance": {
         "oni_observed": "live",
@@ -100,7 +100,6 @@
       "notes": [
         "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (404 Client Error: Not Found for url: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv)). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
         "nmme: dormant (credentials absent; missing NMME_THREDDS_USER, NMME_THREDDS_PASS)",
-        "copernicus_c3s: copernicus_c3s: every request combination was rejected for seasonal-monthly-single-levels.\n  system=51 data_format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  system=51 format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  system=5 data_format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  system=5 format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  A 400 'invalid combination' means auth and licence are fine and the parameters are not; a 403 means the dataset licence still needs accepting once in the CDS web interface.",
         "jamstec_sintex: dormant (credentials absent; missing JAMSTEC_TOKEN)",
         "bom_access_s: dormant (credentials absent; missing BOM_API_KEY)",
         "era5: unexpected error ValueError(\"did not find a match in any of xarray's currently installed IO backends ['netcdf4']. Consider explicitly selecting one of the installed engines via the ``engine`` parameter, or installing additional IO dependencies, see:\\nhttps://docs.xarray.dev/en/stable/getting-started-guide/installing.html\\nhttps://docs.xarray.dev/en/stable/user-guide/io.html\")",
@@ -127,7 +126,6 @@
       ],
       "failed_sources": [
         "iri_plume",
-        "copernicus_c3s",
         "era5",
         "usda_wasde"
       ],
@@ -8535,7 +8533,6 @@
   "notes": [
     "iri_plume: iri_plume: no machine-readable plume available (iri_plume: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv unreachable (404 Client Error: Not Found for url: https://iri.columbia.edu/~forecast/ensofcst/Data/figure4_data.csv)). The dashboard falls back to the stored ensemble summary rather than digitising the published figure.",
     "nmme: dormant (credentials absent; missing NMME_THREDDS_USER, NMME_THREDDS_PASS)",
-    "copernicus_c3s: copernicus_c3s: every request combination was rejected for seasonal-monthly-single-levels.\n  system=51 data_format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  system=51 format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  system=5 data_format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  system=5 format=netcdf lead=1-6 init=2026-11 -> TimeoutError: CDS did not deliver within 420s (job continues server-side and should be cached for the next run)\n  A 400 'invalid combination' means auth and licence are fine and the parameters are not; a 403 means the dataset licence still needs accepting once in the CDS web interface.",
     "jamstec_sintex: dormant (credentials absent; missing JAMSTEC_TOKEN)",
     "bom_access_s: dormant (credentials absent; missing BOM_API_KEY)",
     "era5: unexpected error ValueError(\"did not find a match in any of xarray's currently installed IO backends ['netcdf4']. Consider explicitly selecting one of the installed engines via the ``engine`` parameter, or installing additional IO dependencies, see:\\nhttps://docs.xarray.dev/en/stable/getting-started-guide/installing.html\\nhttps://docs.xarray.dev/en/stable/user-guide/io.html\")",
